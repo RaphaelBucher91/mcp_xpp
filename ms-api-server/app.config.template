@@ -1,4 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- NOTE: Placeholder paths (avm13osb.viu) are replaced at build time by build-and-run.ps1 -->
+<!-- The build script auto-discovers the correct VS extension path -->
 <configuration>
   <startup>
     <supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.8" />

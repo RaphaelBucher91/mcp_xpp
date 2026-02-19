@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 
 # Setup Visual Studio D365 Extension References
-# This script dynamically finds the VS2022 D365 extension path and updates the .csproj file
+# This script dynamically finds the VS D365 extension path and updates the .csproj file
 
 Write-Host "=== Setting up Visual Studio D365 Extension References ===" -ForegroundColor Green
 

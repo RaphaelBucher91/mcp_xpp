@@ -769,7 +769,7 @@ namespace D365MetadataService.Services
         /// Execute a modification method on a specific D365 object
         /// Public interface for MCP tool integration
         /// </summary>
-        public async Task<ObjectModificationResult> ExecuteObjectModificationAsync(string objectType, string objectName, string methodName, Dictionary<string, object> parameters)
+        public async Task<ObjectModificationResult> ExecuteObjectModificationAsync(string objectType, string objectName, string methodName, Dictionary<string, object> parameters, string model = null)
         {
             var result = new ObjectModificationResult
             {
@@ -820,7 +820,7 @@ namespace D365MetadataService.Services
 
                     // CRITICAL: Save the modified object back to the metadata store
                     // This is essential for persisting changes!
-                    var saveSuccess = await SaveModifiedObjectAsync(objectType, objectName, targetObject);
+                    var saveSuccess = await SaveModifiedObjectAsync(objectType, objectName, targetObject, model);
                     
                     result.Success = true;
                     result.ReturnValue = returnValue?.ToString();
@@ -865,14 +865,14 @@ namespace D365MetadataService.Services
         /// <summary>
         /// Save a modified object back to the metadata store
         /// </summary>
-        private async Task<bool> SaveModifiedObjectAsync(string objectType, string objectName, object modifiedObject)
+        private async Task<bool> SaveModifiedObjectAsync(string objectType, string objectName, object modifiedObject, string model = null)
         {
             try
             {
-                _logger.Information("Saving modified object: {ObjectType}:{ObjectName}", objectType, objectName);
+                _logger.Information("Saving modified object: {ObjectType}:{ObjectName} to model: {Model}", objectType, objectName, model ?? "(auto-detect)");
                 
-                // Use the D365ObjectFactory to save the object
-                var saveResult = await _objectFactory.SaveObjectAsync(objectType, objectName, modifiedObject);
+                // Use the D365ObjectFactory to save the object with model info
+                var saveResult = await _objectFactory.SaveObjectAsync(objectType, objectName, modifiedObject, model);
                 
                 if (saveResult)
                 {

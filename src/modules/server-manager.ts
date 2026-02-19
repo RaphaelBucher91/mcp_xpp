@@ -2,10 +2,15 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
+  ListPromptsRequestSchema,
+  GetPromptRequestSchema,
   ErrorCode,
   McpError,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { promises as fs } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 import { ToolDefinitions } from "./tool-definitions.js";
 import { ToolHandlers } from "./tool-handlers.js";
 import { DiskLogger } from "./logger.js";
@@ -28,6 +33,7 @@ export class ServerManager {
     }, {
       capabilities: {
         tools: {},
+        prompts: {},
       },
     });
   }
@@ -59,6 +65,55 @@ export class ServerManager {
       
       await DiskLogger.logResponse(toolsResponse, (request as any).id);
       return toolsResponse;
+    });
+
+    // Handle list prompts request
+    this.server.setRequestHandler(ListPromptsRequestSchema, async () => {
+      return {
+        prompts: [
+          {
+            name: "d365-development-guidelines",
+            description: "D365 F&O development guidelines including naming conventions, clean coding standards, feature management patterns, table/form setup rules, and best practices for X++ development.",
+          },
+        ],
+      };
+    });
+
+    // Handle get prompt request
+    this.server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+      if (request.params.name !== "d365-development-guidelines") {
+        throw new McpError(
+          ErrorCode.InvalidParams,
+          `Unknown prompt: ${request.params.name}`
+        );
+      }
+
+      // Load guidelines from the docs/internal folder
+      let guidelinesContent: string;
+      try {
+        // Resolve path relative to the build output
+        const currentDir = dirname(fileURLToPath(import.meta.url));
+        const guidelinesPath = join(currentDir, '..', '..', 'docs', 'internal', 'development-guidelines.md');
+        guidelinesContent = await fs.readFile(guidelinesPath, 'utf-8');
+      } catch (error) {
+        throw new McpError(
+          ErrorCode.InternalError,
+          `Failed to load development guidelines: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+      }
+
+      return {
+        description: "D365 F&O Development Guidelines (BEC)",
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `You must follow these D365 F&O development guidelines when generating or reviewing X++ code:\n\n${guidelinesContent}`,
+            },
+          },
+        ],
+      };
     });
 
     // Handle call tool request

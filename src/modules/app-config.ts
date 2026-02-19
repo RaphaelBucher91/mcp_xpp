@@ -8,7 +8,7 @@ import { promises as fs } from "fs";
 import { join } from "path";
 import { DiskLogger } from "./logger.js";
 import { ObjectIndexManager } from "./object-index.js";
-import { autoDetectVS2022ExtensionPath } from "./vs2022-config.js";
+import { autoDetectVSExtensionPath } from "./visual-studio-config.js";
 import { D365ServiceClient } from "./d365-service-client.js";
 
 // Import server start time function
@@ -35,8 +35,9 @@ async function importServerStartTime() {
 export interface ServerConfiguration {
   xppPath?: string;
   xppMetadataFolder?: string;
-  vs2022ExtensionPath?: string;
+  vsExtensionPath?: string;
   d365Url?: string; // Future use
+  defaultModel?: string;
 }
 
 export interface IndexStatistics {
@@ -109,15 +110,21 @@ class AppConfigManager {
             i++; // Skip the next argument as it's the value
           }
           break;
-        case '--vs2022-extension-path':
+        case '--vs-extension-path':
           if (i + 1 < args.length) {
-            parsedConfig.vs2022ExtensionPath = args[i + 1];
+            parsedConfig.vsExtensionPath = args[i + 1];
             i++; // Skip the next argument as it's the value
           }
           break;
         case '--d365-url':
           if (i + 1 < args.length) {
             parsedConfig.d365Url = args[i + 1];
+            i++; // Skip the next argument as it's the value
+          }
+          break;
+        case '--default-model':
+          if (i + 1 < args.length) {
+            parsedConfig.defaultModel = args[i + 1];
             i++; // Skip the next argument as it's the value
           }
           break;
@@ -133,32 +140,32 @@ class AppConfigManager {
   public async initialize(): Promise<void> {
     this.parseCommandLineArgs();
 
-    // Try to get configuration from VS2022 service with 30-second timeout
+    // Try to get configuration from D365 service with 30-second timeout
     // This is now purely informational - the service handles all actual work
     let setupFromService = false;
     if (!this.config.xppPath || !this.config.xppMetadataFolder) {
       try {
-        await DiskLogger.logDebug("Attempting to get setup configuration from VS2022 service...");
-        console.log("Attempting to get setup configuration from VS2022 service (30s timeout)...");
+        await DiskLogger.logDebug("Attempting to get setup configuration from D365 service...");
+        console.log("Attempting to get setup configuration from D365 service (30s timeout)...");
         
-        const setupInfo = await this.getSetupFromVS2022Service(30000); // 30 second timeout
+        const setupInfo = await this.getSetupFromD365Service(30000); // 30 second timeout
         if (setupInfo) {
           // Update configuration with service-provided values (informational only)
           this.config.xppPath = this.config.xppPath || setupInfo.PackagesLocalDirectory;
           this.config.xppMetadataFolder = this.config.xppMetadataFolder || setupInfo.CustomMetadataPath;
-          this.config.vs2022ExtensionPath = this.config.vs2022ExtensionPath || setupInfo.ExtensionPath;
+          this.config.vsExtensionPath = this.config.vsExtensionPath || setupInfo.ExtensionPath;
           
           setupFromService = true;
-          console.log("Setup configuration retrieved from VS2022 service");
-          await DiskLogger.logDebug(`Setup from VS2022 service: ${JSON.stringify(setupInfo, null, 2)}`);
+          console.log("Setup configuration retrieved from D365 service");
+          await DiskLogger.logDebug(`Setup from D365 service: ${JSON.stringify(setupInfo, null, 2)}`);
         }
       } catch (error) {
-        await DiskLogger.logDebug(`Failed to get setup from VS2022 service: ${error}`);
-        console.log("Could not get setup from VS2022 service, proceeding with available configuration");
+        await DiskLogger.logDebug(`Failed to get setup from D365 service: ${error}`);
+        console.log("Could not get setup from D365 service, proceeding with available configuration");
       }
     }
 
-    // Note: xppPath is now purely informational - VS2022 service handles all actual work
+    // Note: xppPath is now purely informational - D365 service handles all actual work
     // No validation required as the service operates independently
 
     // Create XPP metadata folder if specified and doesn't exist
@@ -166,42 +173,42 @@ class AppConfigManager {
       await this.ensureDirectoryExists(this.config.xppMetadataFolder);
     }
 
-    // Handle VS2022 extension path - validate if provided, or auto-detect if not
-    if (this.config.vs2022ExtensionPath) {
+    // Handle VS extension path - validate if provided, or auto-detect if not
+    if (this.config.vsExtensionPath) {
       try {
-        await fs.access(this.config.vs2022ExtensionPath);
-        await DiskLogger.logDebug(`VS2022 extension path validated: ${this.config.vs2022ExtensionPath}`);
+        await fs.access(this.config.vsExtensionPath);
+        await DiskLogger.logDebug(`VS extension path validated: ${this.config.vsExtensionPath}`);
         
         // Also check if the templates subdirectory exists
-        const templatesPath = join(this.config.vs2022ExtensionPath, "Templates", "ProjectItems", "FinanceOperations", "Dynamics 365 Items");
+        const templatesPath = join(this.config.vsExtensionPath, "Templates", "ProjectItems", "FinanceOperations", "Dynamics 365 Items");
         try {
           await fs.access(templatesPath);
-          await DiskLogger.logDebug(`VS2022 templates directory validated: ${templatesPath}`);
+          await DiskLogger.logDebug(`VS templates directory validated: ${templatesPath}`);
         } catch (error) {
-          const warningMsg = `VS2022 templates directory not found: ${templatesPath}`;
+          const warningMsg = `VS templates directory not found: ${templatesPath}`;
           await DiskLogger.logDebug(warningMsg);
           console.warn(`WARNING: ${warningMsg}`);
         }
       } catch (error) {
-        const errorMsg = `VS2022 extension path does not exist: ${this.config.vs2022ExtensionPath}`;
-        await DiskLogger.logError(new Error(errorMsg), "vs2022-path-validation");
+        const errorMsg = `VS extension path does not exist: ${this.config.vsExtensionPath}`;
+        await DiskLogger.logError(new Error(errorMsg), "vs-path-validation");
         throw new Error(errorMsg);
       }
     } else {
-      // Try to auto-detect VS2022 extension path
+      // Try to auto-detect VS extension path
       try {
-        const autoDetectedPath = await autoDetectVS2022ExtensionPath();
+        const autoDetectedPath = await autoDetectVSExtensionPath();
         if (autoDetectedPath) {
-          this.config.vs2022ExtensionPath = autoDetectedPath;
-          await DiskLogger.logDebug(`VS2022 extension path auto-detected: ${autoDetectedPath}`);
-          console.log(`Auto-detected VS2022 extension path: ${autoDetectedPath}`);
+          this.config.vsExtensionPath = autoDetectedPath;
+          await DiskLogger.logDebug(`VS extension path auto-detected: ${autoDetectedPath}`);
+          console.log(`Auto-detected VS extension path: ${autoDetectedPath}`);
         } else {
-          await DiskLogger.logDebug("VS2022 extension path not provided and auto-detection failed");
-          console.log("VS2022 extension path not provided and could not be auto-detected");
+          await DiskLogger.logDebug("VS extension path not provided and auto-detection failed");
+          console.log("VS extension path not provided and could not be auto-detected");
         }
       } catch (error) {
-        await DiskLogger.logDebug(`VS2022 auto-detection failed: ${error}`);
-        console.warn(`VS2022 auto-detection failed: ${error}`);
+        await DiskLogger.logDebug(`VS auto-detection failed: ${error}`);
+        console.warn(`VS auto-detection failed: ${error}`);
       }
     }
 
@@ -229,16 +236,16 @@ class AppConfigManager {
   }
 
   /**
-   * Get setup configuration from VS2022 service
+   * Get setup configuration from D365 service
    */
-  private async getSetupFromVS2022Service(timeoutMs: number): Promise<any | null> {
+  private async getSetupFromD365Service(timeoutMs: number): Promise<any | null> {
     const client = new D365ServiceClient('mcp-xpp-d365-service', timeoutMs, timeoutMs);
     
     try {
-      await DiskLogger.logDebug(`Connecting to VS2022 service with ${timeoutMs}ms timeout...`);
+      await DiskLogger.logDebug(`Connecting to D365 service with ${timeoutMs}ms timeout...`);
       await client.connect();
       
-      await DiskLogger.logDebug("Requesting setup information from VS2022 service...");
+      await DiskLogger.logDebug("Requesting setup information from D365 service...");
       const setupInfo = await client.getSetupInfo();
       
       await client.disconnect();
@@ -257,7 +264,7 @@ class AppConfigManager {
         // Ignore disconnect errors
       }
       
-      await DiskLogger.logDebug(`VS2022 service setup request failed: ${error}`);
+      await DiskLogger.logDebug(`D365 service setup request failed: ${error}`);
       throw error;
     }
   }
@@ -267,6 +274,13 @@ class AppConfigManager {
    */
   public getServerConfig(): ServerConfiguration {
     return { ...this.config };
+  }
+
+  /**
+   * Get default model name for object creation
+   */
+  public getDefaultModel(): string | undefined {
+    return this.config.defaultModel;
   }
 
   /**
@@ -284,10 +298,10 @@ class AppConfigManager {
   }
 
   /**
-   * Get VS2022 extension path
+   * Get VS extension path
    */
-  public getVS2022ExtensionPath(): string | undefined {
-    return this.config.vs2022ExtensionPath;
+  public getVSExtensionPath(): string | undefined {
+    return this.config.vsExtensionPath;
   }
 
   /**
@@ -484,7 +498,7 @@ class AppConfigManager {
 
   /**
    * Get all available D365 F&O models in the codebase
-   * Note: This is informational only - actual model operations handled by VS2022 service
+   * Note: This is informational only - actual model operations handled by D365 service
    */
   public async getAvailableModels(): Promise<ModelInfo[]> {
     const models: ModelInfo[] = [];

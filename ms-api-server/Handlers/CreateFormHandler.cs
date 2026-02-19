@@ -18,12 +18,14 @@ namespace D365MetadataService.Handlers
     {
         private readonly D365ObjectFactory _objectFactory;
         private readonly D365ControlFactory _controlFactory;
+        private readonly FileSystemManager _fileSystemManager;
         private readonly ILogger _logger;
 
-        public CreateFormHandler(D365ObjectFactory objectFactory, D365ControlFactory controlFactory, ParameterDiscoveryService parameterDiscoveryService, ILogger logger) 
+        public CreateFormHandler(D365ObjectFactory objectFactory, D365ControlFactory controlFactory, ParameterDiscoveryService parameterDiscoveryService, FileSystemManager fileSystemManager, ILogger logger) 
         {
             _objectFactory = objectFactory;
             _controlFactory = controlFactory;
+            _fileSystemManager = fileSystemManager;
             _logger = logger;
         }
 

@@ -979,7 +979,7 @@ namespace D365MetadataService.Services
 
         /// <summary>
         /// COMPREHENSIVE PROPERTY DISCOVERY - Get all properties with possible values
-        /// Discovers properties from BOTH Root and Concrete types like VS2022 Properties window
+        /// Discovers properties from BOTH Root and Concrete types like VS Properties window
         /// Returns property names, possible enum values, and current values for instances
         /// NO FAKE DESCRIPTIONS - only real property information
         /// </summary>
@@ -1073,7 +1073,7 @@ namespace D365MetadataService.Services
 
         /// <summary>
         /// Discover ALL properties using inheritance-based algorithm
-        /// Combines properties from Root, Concrete, and entire inheritance chain like VS2022
+        /// Combines properties from Root, Concrete, and entire inheritance chain like VS
         /// </summary>
         private PropertyInfo[] DiscoverAllPropertiesFromInheritanceChain(string objectTypeName)
         {

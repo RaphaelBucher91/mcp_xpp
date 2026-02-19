@@ -33,7 +33,7 @@ export class ToolHandlers {
         
         if (cachedTypes.length === 0) {
           return await createLoggedResponse(
-            "❌ No object types cached. Please run build_object_index first to cache object types from VS2022 service.",
+            "❌ No object types cached. Please run build_object_index first to cache object types from D365 service.",
             requestId,
             "create_xpp_object"
           );
@@ -69,7 +69,7 @@ export class ToolHandlers {
         });
         
         let content = `Available D365 Object Types (${cachedTypes.length} total)\n`;
-        content += `Cached from VS2022 service reflection\n\n`;
+        content += `Cached from D365 service reflection\n\n`;
         
         // Show organized categories
         Object.entries(typesByCategory).forEach(([category, types]) => {
@@ -113,6 +113,7 @@ export class ToolHandlers {
       publisher: z.string().default("YourCompany"),
       version: z.string().default("1.0.0.0"),
       dependencies: z.array(z.string()).default(["ApplicationPlatform", "ApplicationFoundation"]),
+      model: z.string().optional(),
       outputPath: z.string().default("Models"),
       properties: z.record(z.any()).optional(),
       discoverParameters: z.boolean().default(false),
@@ -279,27 +280,28 @@ export class ToolHandlers {
       );
     }
 
-    // Note: xppPath no longer required - VS2022 service handles all operations
-    console.log(`Creating ${params.objectType} '${params.objectName}' using direct VS2022 service integration...`);
+    // Note: xppPath no longer required - D365 service handles all operations
+    console.log(`Creating ${params.objectType} '${params.objectName}' using direct D365 service integration...`);
     
     let content: string;
     const startTime = Date.now();
     
     try {
-      // Direct VS2022 service integration - supports all 544+ D365 object types
+      // Direct D365 service integration - supports all 544+ D365 object types
       content = await ObjectCreators.createGenericObject(params.objectType, params.objectName, {
         layer: params.layer,
         publisher: params.publisher,
         version: params.version,
         dependencies: params.dependencies,
+        model: params.model,
         outputPath: params.outputPath,
         properties: params.properties
       });
       
       // Immediately add the created object to the search index for instant searchability
       try {
-        const model = params.properties?.model || 'UnknownModel';
-        const filePath = `Models/${model}/${params.objectType}/${params.objectName}.xml`;
+        const model = params.model || params.properties?.model || 'UnknownModel';
+        const filePath = `${model}/${params.objectType}/${params.objectName}`;
         
         const indexSuccess = await ObjectIndexManager.addObjectToIndex(
           params.objectName,
@@ -319,7 +321,7 @@ export class ToolHandlers {
       }
       
       const executionTime = Date.now() - startTime;
-      content += `\n\nPerformance: ${executionTime}ms using VS2022 service integration\n`;
+      content += `\n\nPerformance: ${executionTime}ms using D365 service integration\n`;
       
       return await createLoggedResponse(content, requestId, "create_xpp_object");
       
@@ -330,7 +332,7 @@ export class ToolHandlers {
       content = `Failed to create ${params.objectType} '${params.objectName}'\n\n`;
       content += `Error: ${errorMsg}\n\n`;
       content += `Execution time: ${executionTime}ms\n`;
-      content += `Ensure VS2022 service is running and object type is supported\n`;
+      content += `Ensure D365 service is running and object type is supported\n`;
       
       return await createLoggedResponse(content, requestId, "create_xpp_object");
     }
@@ -477,7 +479,7 @@ export class ToolHandlers {
       try {
         const model = response.Data.Model || 'ApplicationSuite';
         const formName = response.Data.FormName;
-        const filePath = `Models/${model}/AxForm/${formName}.xml`;
+        const filePath = `${model}/AxForm/${formName}`;
         
         console.log(`🔍 Attempting to add form to index: ${formName} (AxForm) in model ${model} at ${filePath}`);
         
@@ -921,7 +923,7 @@ export class ToolHandlers {
     });
     const { objectType, forceRebuild } = schema.parse(args);
     
-    // Note: xppPath no longer required for index building - VS2022 service provides all data
+    // Note: xppPath no longer required for index building - D365 service provides all data
     let content = "";
   
     // Build file object index
@@ -934,15 +936,15 @@ export class ToolHandlers {
       content += `- ${type}: ${count}\n`;
     }
     
-    // Also cache object types from VS2022 service during index build
+    // Also cache object types from D365 service during index build
     try {
-      content += "\n=== Caching Object Types from VS2022 Service ===\n";
+      content += "\n=== Caching Object Types from D365 Service ===\n";
       const availableTypes = await AOTStructureManager.getAvailableObjectTypes();
       
       // Cache object types in SQLite for fast retrieval
       await ObjectIndexManager.cacheObjectTypes(availableTypes);
       
-      content += `✅ Cached ${availableTypes.length} object types from VS2022 reflection\n`;
+      content += `✅ Cached ${availableTypes.length} object types from D365 reflection\n`;
       content += `📊 Sample types: ${availableTypes.slice(0, 10).join(', ')}...\n`;
       
       // Show type distribution
@@ -1042,9 +1044,9 @@ export class ToolHandlers {
       // Default: Return summary view with model names only
       const groupedModels = ToolHandlers.groupModelsByType(config.models);
       
-      // Only call VS2022 service if explicitly requested via args.includeVS2022Service
-      let vs2022ServiceInfo = null;
-      if (args?.includeVS2022Service === true) {
+      // Only call D365 service if explicitly requested via args.includeD365Service
+      let d365ServiceInfo = null;
+      if (args?.includeD365Service === true) {
         try {
           // Wrap the entire D365 service interaction in a more robust error handler
           const servicePromise = (async () => {
@@ -1058,7 +1060,7 @@ export class ToolHandlers {
             
             await client.connect();
             
-            // Get service health and models from VS2022 service
+            // Get service health and models from D365 service
             const [healthStatus, serviceModels] = await Promise.all([
               client.healthCheck().catch(() => ({ status: 'unavailable' })),
               client.getModels().catch(() => null)
@@ -1080,22 +1082,22 @@ export class ToolHandlers {
             setTimeout(() => reject(new Error('Service connection timeout')), 3000);
           });
           
-          vs2022ServiceInfo = await Promise.race([servicePromise, timeoutPromise]);
+          d365ServiceInfo = await Promise.race([servicePromise, timeoutPromise]);
           
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Service connection failed';
           console.warn('D365 Service unavailable:', errorMessage);
           
-          vs2022ServiceInfo = {
+          d365ServiceInfo = {
             status: 'unavailable',
             error: errorMessage,
             lastUpdated: new Date().toISOString()
           };
         }
       } else {
-        vs2022ServiceInfo = {
+        d365ServiceInfo = {
           status: 'not-requested',
-          note: 'Use includeVS2022Service: true parameter to get live VS2022 service status',
+          note: 'Use includeD365Service: true parameter to get live D365 service status',
           lastUpdated: new Date().toISOString()
         };
       }
@@ -1118,13 +1120,13 @@ export class ToolHandlers {
         models: summaryModels, // Simplified model structure with names only
         applicationInfo: config.applicationInfo,
         systemInfo: config.systemInfo,
-        vs2022Service: vs2022ServiceInfo,
+        d365Service: d365ServiceInfo,
         summary: {
           totalModels: config.models.length,
           customModels: groupedModels.custom.length,
           standardModels: groupedModels.standard.length,
           indexedObjects: config.indexStats.totalObjects,
-          serverStatus: (vs2022ServiceInfo as any)?.status || 'not-requested'
+          serverStatus: (d365ServiceInfo as any)?.status || 'not-requested'
         }
       };
       
@@ -1734,6 +1736,7 @@ export class ToolHandlers {
     const arrayModificationSchema = z.object({
       objectType: z.string().min(1, "objectType is required and must be non-empty"),
       objectName: z.string().min(1, "objectName is required and must be non-empty"),
+      model: z.string().optional(),
       modifications: z.array(z.object({
         methodName: z.string().min(1, "methodName is required and must be non-empty"),
         parameters: z.record(z.any()).optional().default({})
@@ -1746,10 +1749,10 @@ export class ToolHandlers {
     if (!arrayValidation.success) {
       const errors = arrayValidation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
       throw new McpError(ErrorCode.InvalidParams, 
-        `❌ Invalid format. This tool only accepts array-based modifications.\n` +
-        `📋 Required format: { objectType, objectName, modifications: [{ methodName, parameters }] }\n` +
-        `🚫 Validation errors: ${errors}\n` +
-        `� For single operations, use: modifications: [{ methodName: "AddField", parameters: {...} }]`
+        `Invalid format. This tool only accepts array-based modifications.\n` +
+        `Required format: { objectType, objectName, model, modifications: [{ methodName, parameters }] }\n` +
+        `Validation errors: ${errors}\n` +
+        `For single operations, use: modifications: [{ methodName: "AddField", parameters: {...} }]`
       );
     }
     
@@ -1757,7 +1760,10 @@ export class ToolHandlers {
     const objectName = arrayValidation.data.objectName;
     const modifications = arrayValidation.data.modifications;
     
-    console.log(`🔧 Processing ${modifications.length} modifications for ${objectType}:${objectName}`);
+    // Resolve model: use provided model, or fall back to configured default
+    const model = arrayValidation.data.model || AppConfig.getDefaultModel();
+    
+    console.log(`Processing ${modifications.length} modifications for ${objectType}:${objectName} in model: ${model || '(auto-detect)'}`);
 
     try {
       // Import D365ServiceClient dynamically to avoid circular dependencies
@@ -1794,7 +1800,8 @@ export class ToolHandlers {
             objectType, 
             objectName, 
             modification.methodName, 
-            modification.parameters
+            modification.parameters,
+            model
           );
           const processingTime = Date.now() - startTime;
           

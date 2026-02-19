@@ -20,7 +20,7 @@ export class ObjectIndexManager {
    * Phase 1: Discover all AOT folders matching Ax* patterns
    * This is much faster than walking every directory
    * Optimized for D365 F&O double-nested package structure
-   * Note: This method is primarily for fallback scenarios - VS2022 service handles primary indexing
+   * Note: This method is primarily for fallback scenarios - D365 service handles primary indexing
    */
   static async discoverAOTFolders(basePath: string, objectType?: string): Promise<Map<string, string[]>> {
     const cacheKey = objectType || 'ALL';
@@ -222,11 +222,11 @@ export class ObjectIndexManager {
       }
     }
 
-    // Try DLL-based indexing via VS2022 service with parallel processing
+    // Try DLL-based indexing via D365 service with parallel processing
     try {
-      console.log('🚀 Attempting DLL-based indexing via VS2022 service with parallel processing...');
+      console.log('Attempting DLL-based indexing via D365 service with parallel processing...');
       
-      console.log('🔌 Connecting to VS2022 C# service for model discovery...');
+      console.log('Connecting to D365 C# service for model discovery...');
       const client = new D365ServiceClient();
       await client.connect();
       
@@ -283,7 +283,7 @@ export class ObjectIndexManager {
         
       } finally {
         await client.disconnect();
-        console.log('📡 Disconnected from VS2022 service');
+        console.log('Disconnected from D365 service');
       }
       
     } catch (error) {
@@ -293,7 +293,7 @@ export class ObjectIndexManager {
   }
 
   /**
-   * Get available models dynamically from VS2022 C# service
+   * Get available models dynamically from D365 C# service
    */
   private static async getAvailableModelsFromService(client: D365ServiceClient): Promise<string[]> {
     try {
@@ -522,7 +522,7 @@ export class ObjectIndexManager {
   }
 
   /**
-   * Cache object types from VS2022 service in SQLite for fast retrieval
+   * Cache object types from D365 service in SQLite for fast retrieval
    * This integrates with the existing build index process
    */
   static async cacheObjectTypes(objectTypes: string[]): Promise<void> {

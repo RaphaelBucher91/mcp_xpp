@@ -204,15 +204,35 @@ namespace D365MetadataService.Services
 
         #endregion
 
-        #region VS2022 Extension Discovery
+        #region VS Extension Discovery
+
+        // Supported Visual Studio versions (newest first for priority)
+        // VS2026 uses internal version "18" as folder name, VS2022 uses "2022"
+        private static readonly string[] SupportedVSVersions = { "18", "2022" };
+        private static readonly string[] SupportedVSEditions = { "Professional", "Enterprise", "Community" };
 
         /// <summary>
-        /// UNIFIED VS2022 extension path discovery with intelligent caching
-        /// Centralizes complex filesystem logic for finding D365 extensions
+        /// Build all candidate VS extension search paths across supported versions
         /// </summary>
-        public string GetVS2022ExtensionPath(string targetAssembly = "Microsoft.Dynamics.AX.Metadata.dll")
+        private static IEnumerable<string> BuildVSExtensionSearchPaths()
         {
-            var cacheKey = $"vs2022_extension_{targetAssembly}";
+            foreach (var version in SupportedVSVersions)
+            {
+                foreach (var edition in SupportedVSEditions)
+                {
+                    yield return $@"C:\Program Files\Microsoft Visual Studio\{version}\{edition}\Common7\IDE\Extensions";
+                }
+            }
+        }
+
+        /// <summary>
+        /// UNIFIED VS extension path discovery with intelligent caching
+        /// Centralizes complex filesystem logic for finding D365 extensions
+        /// Scans newest version first
+        /// </summary>
+        public string GetVSExtensionPath(string targetAssembly = "Microsoft.Dynamics.AX.Metadata.dll")
+        {
+            var cacheKey = $"vs_extension_{targetAssembly}";
             
             // Check cache first
             if (IsCacheValid(cacheKey) && _extensionPathCache.TryGetValue(cacheKey, out var cachedPath))
@@ -222,21 +242,13 @@ namespace D365MetadataService.Services
 
             try
             {
-                _logger.Information("🔍 Discovering VS2022 extension path for {Assembly}...", targetAssembly);
-                
-                // Common VS2022 installation paths
-                var commonPaths = new[]
-                {
-                    @"C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\Extensions",
-                    @"C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\IDE\Extensions",
-                    @"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\Extensions"
-                };
+                _logger.Information("Discovering VS D365 extension path for {Assembly}...", targetAssembly);
 
-                foreach (var basePath in commonPaths)
+                foreach (var basePath in BuildVSExtensionSearchPaths())
                 {
                     if (DirectoryExists(basePath))
                     {
-                        _logger.Debug("🔍 Searching in {BasePath}...", basePath);
+                        _logger.Debug("Searching in {BasePath}...", basePath);
                         
                         var extensionDirs = GetDirectories(basePath);
                         foreach (var dir in extensionDirs)
@@ -244,7 +256,7 @@ namespace D365MetadataService.Services
                             var assemblyPath = CombinePath(dir, targetAssembly);
                             if (FileExists(assemblyPath))
                             {
-                                _logger.Information("✅ Found VS2022 extension at: {ExtensionPath}", dir);
+                                _logger.Information("Found VS D365 extension at: {ExtensionPath}", dir);
                                 
                                 // Cache successful result
                                 _extensionPathCache[cacheKey] = dir;
@@ -256,7 +268,7 @@ namespace D365MetadataService.Services
                     }
                 }
 
-                _logger.Warning("⚠️ VS2022 extension path not found for {Assembly}", targetAssembly);
+                _logger.Warning("VS D365 extension path not found for {Assembly}", targetAssembly);
                 
                 // Cache negative result (shorter expiration)
                 _extensionPathCache[cacheKey] = string.Empty;
@@ -266,7 +278,7 @@ namespace D365MetadataService.Services
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "❌ Error discovering VS2022 extension path");
+                _logger.Error(ex, "Error discovering VS D365 extension path");
                 return string.Empty;
             }
         }

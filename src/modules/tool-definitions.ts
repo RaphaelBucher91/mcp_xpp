@@ -16,7 +16,7 @@ export class ToolDefinitions {
       tools: [
         {
           name: "create_xpp_object",
-          description: "🔍 BROWSE OBJECT TYPES: Call without parameters to see all 544+ available D365 F&O object types organized by category. 🏗️ CREATE OBJECTS: Provide parameters to create D365 F&O objects using VS2022 service integration. Supports classes, tables, enums, data entities, reports, workflows, services, and more. ⚠️ IMPORTANT: For creating FORMS, use the dedicated 'create_form' tool instead as it provides specialized pattern support and datasource integration.",
+          description: "BROWSE OBJECT TYPES: Call without parameters to see all 544+ available D365 F&O object types organized by category. CREATE OBJECTS: Provide parameters to create D365 F&O objects using D365 service integration. Supports classes, tables, enums, data entities, reports, workflows, services, and more. IMPORTANT: For creating FORMS, use the dedicated 'create_form' tool instead as it provides specialized pattern support and datasource integration.",
           inputSchema: {
             type: "object",
             properties: {
@@ -33,6 +33,10 @@ export class ToolDefinitions {
                 type: "string",
                 enum: availableLayers,
                 description: "D365 application layer for the object. Common layers: 'usr' (user layer - customizations), 'cus' (customer layer - modifications), 'var' (partner layer - VAR solutions), 'isl' (independent software layer), 'sys' (system layer - Microsoft). Choose 'usr' for most custom development."
+              },
+              model: {
+                type: "string",
+                description: "D365 model/package name to create the object in (e.g., 'BEC', 'BESystemCore', 'ApplicationSuite'). This determines which model folder the object is saved under. If not specified, defaults to the configured DefaultModel in the C# service (typically 'ApplicationSuite')."
               },
               outputPath: {
                 type: "string",
@@ -477,9 +481,9 @@ export class ToolDefinitions {
                 description: "Optional: Set to true to return the list of all available D365 object types (536+ types). Use this to see what object types can be created.",
                 default: false,
               },
-              includeVS2022Service: {
+              includeD365Service: {
                 type: "boolean",
-                description: "Optional: Include VS2022 service status check (may add latency). Default false for faster response.",
+                description: "Optional: Include D365 service status check (may add latency). Default false for faster response.",
                 default: false,
               },
             },
@@ -501,9 +505,9 @@ export class ToolDefinitions {
                 }
               },
               {
-                description: "🔧 FULL STATUS: Include VS2022 service status (slower)",
+                description: "FULL STATUS: Include D365 service status (slower)",
                 parameters: {
-                  includeVS2022Service: true
+                  includeD365Service: true
                 }
               }
             ]
@@ -628,6 +632,10 @@ export class ToolDefinitions {
                 type: "string",
                 description: "Name of the existing D365 object to modify (e.g., 'CustTable', 'SalesTable')"
               },
+              model: {
+                type: "string",
+                description: "**IMPORTANT**: D365 model/package name where the object belongs (e.g., 'BEC', 'ApplicationSuite'). This determines where changes are saved. If not specified, falls back to the configured default model. Always specify this to ensure modifications are saved to the correct model."
+              },
               modifications: {
                 type: "array",
                 description: "🔄 Array of modifications to execute on the same object. Each modification is processed sequentially with individual success/failure tracking. For single operations, use array with one element. 📋 **BEST PRACTICE**: Always group ALL modifications for the same object into ONE call instead of making multiple separate calls. This provides better performance, error handling, and transactional integrity.",
@@ -670,10 +678,11 @@ export class ToolDefinitions {
             required: ["objectType", "objectName", "modifications"],
             examples: [
               {
-                description: "⭐ PREFERRED: Batch multiple fields in ONE call (BEST PRACTICE - don't make separate calls)",
+                description: "PREFERRED: Batch multiple fields in ONE call with model specified",
                 parameters: {
                   objectType: "AxTable",
                   objectName: "CustTable",
+                  model: "BEC",
                   modifications: [
                     {
                       methodName: "AddField",

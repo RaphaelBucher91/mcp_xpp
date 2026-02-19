@@ -28,6 +28,7 @@ namespace D365MetadataService.Services
         private readonly IMetadataProvider _metadataProvider; // Primary provider for backward compatibility
         private readonly ILogger _logger;
         private readonly D365ReflectionManager _reflectionManager;
+        private readonly D365Configuration _config;
         private readonly Dictionary<string, Type> _axTypeCache;
         private readonly Dictionary<string, PropertyInfo> _providerPropertyCache;
         private readonly Dictionary<string, MethodInfo> _createMethodCache;
@@ -35,6 +36,7 @@ namespace D365MetadataService.Services
         public D365ObjectFactory(D365Configuration config, ILogger logger)
         {
             _logger = logger.ForContext<D365ObjectFactory>();
+            _config = config;
             _reflectionManager = D365ReflectionManager.Instance;
             _axTypeCache = new Dictionary<string, Type>();
             _providerPropertyCache = new Dictionary<string, PropertyInfo>();
@@ -806,7 +808,7 @@ namespace D365MetadataService.Services
         /// <summary>
         /// Save a modified object back to the metadata store
         /// </summary>
-        public Task<bool> SaveObjectAsync(string objectType, string objectName, object modifiedObject)
+        public Task<bool> SaveObjectAsync(string objectType, string objectName, object modifiedObject, string? model = null)
         {
             try
             {
@@ -817,7 +819,7 @@ namespace D365MetadataService.Services
                     return Task.FromResult(false);
                 }
 
-                _logger.Information("Saving modified object: {ObjectType}:{ObjectName}", objectType, objectName);
+                _logger.Information("Saving modified object: {ObjectType}:{ObjectName} to model: {Model}", objectType, objectName, model ?? "(auto-detect)");
 
                 // First, try to save using the provider itself (not the collection)
                 var providerType = _metadataProvider.GetType();
@@ -885,20 +887,22 @@ namespace D365MetadataService.Services
                 if (createMethod != null)
                 {
                     saveMethod = createMethod;
-                    // Create a properly initialized ModelSaveInfo
+                    // Create a properly initialized ModelSaveInfo with correct model
                     var modelSaveInfoType = createMethod.GetParameters()[1].ParameterType;
-                    var modelSaveInfo = CreateModelSaveInfo(modelSaveInfoType, objectName);
+                    var resolvedModel = ResolveModelForObject(model ?? string.Empty, objectName, modifiedObject);
+                    var modelSaveInfo = CreateModelSaveInfo(modelSaveInfoType, objectName, resolvedModel);
                     parameters = new object[] { modifiedObject, modelSaveInfo };
-                    _logger.Information("Using Create method with parameters: {ObjectType}, {ModelSaveInfoType}", modifiedObject.GetType().Name, modelSaveInfoType.Name);
+                    _logger.Information("Using Create method with parameters: {ObjectType}, {ModelSaveInfoType}, Model: {Model}", modifiedObject.GetType().Name, modelSaveInfoType.Name, resolvedModel);
                 }
                 else if (updateMethod != null)
                 {
                     saveMethod = updateMethod;
-                    // Create a properly initialized ModelSaveInfo  
+                    // Create a properly initialized ModelSaveInfo with correct model  
                     var modelSaveInfoType = updateMethod.GetParameters()[1].ParameterType;
-                    var modelSaveInfo = CreateModelSaveInfo(modelSaveInfoType, objectName);
+                    var resolvedModel = ResolveModelForObject(model ?? string.Empty, objectName, modifiedObject);
+                    var modelSaveInfo = CreateModelSaveInfo(modelSaveInfoType, objectName, resolvedModel);
                     parameters = new object[] { modifiedObject, modelSaveInfo };
-                    _logger.Information("Using Update method with parameters: {ObjectType}, {ModelSaveInfoType}", modifiedObject.GetType().Name, modelSaveInfoType.Name);
+                    _logger.Information("Using Update method with parameters: {ObjectType}, {ModelSaveInfoType}, Model: {Model}", modifiedObject.GetType().Name, modelSaveInfoType.Name, resolvedModel);
                 }
 
                 if (saveMethod == null)
@@ -1083,8 +1087,8 @@ namespace D365MetadataService.Services
                 var nameProperty = modelSaveInfoType.GetProperty("Name");
                 if (nameProperty != null && nameProperty.CanWrite)
                 {
-                    // Try to get model name from existing object, fall back to default
-                    string modelName = "MyCustomModel"; // Default
+                    // Try to get model name from existing object, fall back to configured default
+                    string modelName = GetConfiguredDefaultModel();
                     
                     // Look for model-related properties on the existing object
                     var objectModelProperty = objectType.GetProperty("Model");
@@ -1118,18 +1122,158 @@ namespace D365MetadataService.Services
             catch (Exception ex)
             {
                 _logger.Error(ex, "Failed to create ModelSaveInfo for object deletion: {ObjectName}", objectName);
-                return Activator.CreateInstance(modelSaveInfoType);
+                return Activator.CreateInstance(modelSaveInfoType)!;
             }
         }
 
         /// <summary>
-        /// Create a properly initialized ModelSaveInfo object
+        /// Resolve the correct model name for an object, using provided model, auto-detection, or config default.
         /// </summary>
-        private object CreateModelSaveInfo(Type modelSaveInfoType, string objectName)
+        private string ResolveModelForObject(string providedModel, string objectName, object existingObject)
+        {
+            // 1. Use explicitly provided model
+            if (!string.IsNullOrWhiteSpace(providedModel))
+            {
+                _logger.Information("Using explicitly provided model: {Model} for {ObjectName}", providedModel, objectName);
+                return providedModel;
+            }
+
+            // 2. Try to extract model from the existing object's metadata
+            if (existingObject != null)
+            {
+                var objectType = existingObject.GetType();
+                
+                // Try Model property
+                var modelProperty = objectType.GetProperty("Model");
+                if (modelProperty != null)
+                {
+                    var modelValue = modelProperty.GetValue(existingObject);
+                    var modelStr = modelValue?.ToString();
+                    if (!string.IsNullOrWhiteSpace(modelStr))
+                    {
+                        _logger.Information("Auto-detected model from object.Model: {Model} for {ObjectName}", modelStr, objectName);
+                        return modelStr!;
+                    }
+                }
+
+                // Try ModelName property
+                var modelNameProperty = objectType.GetProperty("ModelName");
+                if (modelNameProperty != null)
+                {
+                    var modelValue = modelNameProperty.GetValue(existingObject);
+                    var modelStr = modelValue?.ToString();
+                    if (!string.IsNullOrWhiteSpace(modelStr))
+                    {
+                        _logger.Information("Auto-detected model from object.ModelName: {Model} for {ObjectName}", modelStr, objectName);
+                        return modelStr!;
+                    }
+                }
+
+                // Try to get model info from the metadata provider
+                try
+                {
+                    if (_metadataProvider?.ModelManifest != null)
+                    {
+                        var axObjectType = objectType.Name;
+                        var modelInfo = GetModelInfoForObject(axObjectType, objectName);
+                        if (modelInfo != null)
+                        {
+                            _logger.Information("Auto-detected model from provider: {Model} for {ObjectName}", modelInfo, objectName);
+                            return modelInfo;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Debug(ex, "Could not auto-detect model from provider for {ObjectName}", objectName);
+                }
+            }
+
+            // 3. Fall back to configured default model
+            _logger.Warning("Could not determine model for {ObjectName}, using configured default", objectName);
+            return GetConfiguredDefaultModel();
+        }
+
+        /// <summary>
+        /// Try to determine which model an object belongs to by checking both providers
+        /// </summary>
+        private string? GetModelInfoForObject(string objectType, string objectName)
         {
             try
             {
-                var modelSaveInfo = Activator.CreateInstance(modelSaveInfoType);
+                if (!_axTypeCache.TryGetValue(objectType, out var axType))
+                    return null;
+
+                // Check custom provider first
+                var providerProperty = FindProviderProperty(objectType);
+                if (providerProperty == null) return null;
+
+                var customCollection = providerProperty.GetValue(_customMetadataProvider, new object[] { axType! });
+                if (customCollection != null)
+                {
+                    var getModelInfoMethod = customCollection.GetType().GetMethod("GetModelInfo",
+                        new Type[] { typeof(string) });
+                    if (getModelInfoMethod != null)
+                    {
+                        var modelInfo = getModelInfoMethod.Invoke(customCollection, new object[] { objectName });
+                        if (modelInfo != null)
+                        {
+                            // ModelInfo has a Name property
+                            var nameProperty = modelInfo.GetType().GetProperty("Name");
+                            var name = nameProperty?.GetValue(modelInfo)?.ToString();
+                            if (!string.IsNullOrWhiteSpace(name))
+                                return name;
+                        }
+                    }
+                }
+
+                // Check standard provider
+                var standardCollection = providerProperty.GetValue(_standardMetadataProvider, new object[] { axType! });
+                if (standardCollection != null)
+                {
+                    var getModelInfoMethod = standardCollection.GetType().GetMethod("GetModelInfo",
+                        new Type[] { typeof(string) });
+                    if (getModelInfoMethod != null)
+                    {
+                        var modelInfo = getModelInfoMethod.Invoke(standardCollection, new object[] { objectName });
+                        if (modelInfo != null)
+                        {
+                            var nameProperty = modelInfo.GetType().GetProperty("Name");
+                            var name = nameProperty?.GetValue(modelInfo)?.ToString();
+                            if (!string.IsNullOrWhiteSpace(name))
+                                return name;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug(ex, "Error getting model info for {ObjectType}:{ObjectName}", objectType, objectName);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Get the configured default model name from the service configuration
+        /// </summary>
+        private string GetConfiguredDefaultModel()
+        {
+            if (_config != null && !string.IsNullOrWhiteSpace(_config.DefaultModel))
+            {
+                return _config.DefaultModel;
+            }
+            return "ApplicationSuite";
+        }
+
+        /// <summary>
+        /// Create a properly initialized ModelSaveInfo object with correct model name
+        /// </summary>
+        private object CreateModelSaveInfo(Type modelSaveInfoType, string objectName, string? modelName = null)
+        {
+            try
+            {
+                var modelSaveInfo = Activator.CreateInstance(modelSaveInfoType)!;
                 
                 // Log all properties to understand the structure
                 var properties = modelSaveInfoType.GetProperties();
@@ -1164,9 +1308,30 @@ namespace D365MetadataService.Services
                 var nameProperty = modelSaveInfoType.GetProperty("Name");
                 if (nameProperty != null && nameProperty.CanWrite)
                 {
-                    // Use a default model name - this could be made configurable
-                    nameProperty.SetValue(modelSaveInfo, "MyCustomModel");
-                    _logger.Information("Set Name property to: MyCustomModel");
+                    // Use provided model name, or fall back to configured default
+                    var resolvedModelName = modelName ?? GetConfiguredDefaultModel();
+                    nameProperty.SetValue(modelSaveInfo, resolvedModelName);
+                    _logger.Information("Set Name property to: {ModelName}", resolvedModelName);
+
+                    // Try to get actual model info from Microsoft API for correct Id/Layer
+                    if (_metadataProvider?.ModelManifest != null)
+                    {
+                        try
+                        {
+                            var modelInfoFromApi = _metadataProvider.ModelManifest.Read(resolvedModelName);
+                            if (modelInfoFromApi != null)
+                            {
+                                idProperty?.SetValue(modelSaveInfo, modelInfoFromApi.Id);
+                                layerProperty?.SetValue(modelSaveInfo, modelInfoFromApi.Layer);
+                                _logger.Information("Updated ModelSaveInfo from API: Id={Id}, Layer={Layer} for model {Model}", 
+                                    modelInfoFromApi.Id, modelInfoFromApi.Layer, resolvedModelName);
+                            }
+                        }
+                        catch (Exception apiEx)
+                        {
+                            _logger.Debug(apiEx, "Could not read model info from API for {Model}, using defaults", resolvedModelName);
+                        }
+                    }
                 }
 
                 var precedenceProperty = modelSaveInfoType.GetProperty("Precedence");
@@ -1181,7 +1346,7 @@ namespace D365MetadataService.Services
             catch (Exception ex)
             {
                 _logger.Error(ex, "Failed to create ModelSaveInfo for {ObjectName}", objectName);
-                return Activator.CreateInstance(modelSaveInfoType);
+                return Activator.CreateInstance(modelSaveInfoType)!;
             }
         }
 

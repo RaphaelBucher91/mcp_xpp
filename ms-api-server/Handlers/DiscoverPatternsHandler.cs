@@ -15,10 +15,12 @@ namespace D365MetadataService.Handlers
     /// </summary>
     public class DiscoverPatternsHandler : IRequestHandler
     {
+        private readonly FileSystemManager _fileSystemManager;
         private readonly ILogger _logger;
 
-        public DiscoverPatternsHandler(ILogger logger)
+        public DiscoverPatternsHandler(FileSystemManager fileSystemManager, ILogger logger)
         {
+            _fileSystemManager = fileSystemManager;
             _logger = logger;
         }
 
@@ -69,8 +71,13 @@ namespace D365MetadataService.Handlers
             {
                 _logger.Information("🔍 Loading D365 Patterns assembly...");
 
-                // Load the required assemblies
-                var vsExtensionPath = @"C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\Extensions\avm13osb.viu";
+                // Dynamically discover the VS D365 extension path
+                var vsExtensionPath = _fileSystemManager.GetVSExtensionPath("Microsoft.Dynamics.AX.Metadata.Patterns.dll");
+                if (string.IsNullOrEmpty(vsExtensionPath))
+                {
+                    _logger.Error("VS D365 extension path not found. Ensure Visual Studio with D365 tools is installed.");
+                    return null;
+                }
                 var patternsAssemblyPath = Path.Combine(vsExtensionPath, "Microsoft.Dynamics.AX.Metadata.Patterns.dll");
                 var metadataAssemblyPath = Path.Combine(vsExtensionPath, "Microsoft.Dynamics.AX.Metadata.dll");
 

@@ -62,6 +62,14 @@ namespace D365MetadataService.Handlers
                     return ServiceResponse.CreateError("methodName cannot be empty");
                 }
 
+                // Extract model parameter (optional but important for correct model targeting)
+                string model = null;
+                if (request.Parameters.TryGetValue("model", out var modelObj) && modelObj != null)
+                {
+                    model = modelObj.ToString();
+                    Logger.Information("Model specified for modification: {Model}", model);
+                }
+
                 // Extract method parameters (optional)
                 var methodParameters = new System.Collections.Generic.Dictionary<string, object>();
                 if (request.Parameters.TryGetValue("parameters", out var parametersObj) && parametersObj != null)
@@ -100,8 +108,8 @@ namespace D365MetadataService.Handlers
                 Logger.Information("✅ Parameter validation successful. Executing modification: {MethodName} on {ObjectType}:{ObjectName}", 
                     methodName, objectType, objectName);
 
-                // Use the dynamic reflection service to execute the modification
-                var result = await _reflectionService.ExecuteObjectModificationAsync(objectType, objectName, methodName, methodParameters);
+                // Use the dynamic reflection service to execute the modification with model targeting
+                var result = await _reflectionService.ExecuteObjectModificationAsync(objectType, objectName, methodName, methodParameters, model);
 
                 Logger.Information("Successfully executed {MethodName} on {ObjectType}:{ObjectName}", 
                     methodName, objectType, objectName);

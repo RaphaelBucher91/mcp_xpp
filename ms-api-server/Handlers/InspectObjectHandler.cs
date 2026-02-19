@@ -246,7 +246,7 @@ namespace D365MetadataService.Handlers
                     {
                         propertyLabelDescCache[propDetail.Name] = (propDetail.Label, propDetail.Description);
                     }
-                    Logger.Debug("✅ Cached labels and descriptions for {Count} properties from single VS2022 lookup", 
+                    Logger.Debug("Cached labels and descriptions for {Count} properties from single VS lookup", 
                         propertyLabelDescCache.Count);
                 }
                 else
@@ -896,7 +896,7 @@ namespace D365MetadataService.Handlers
         }
 
         /// <summary>
-        /// Get both property label and description with a single VS2022 lookup for efficiency
+        /// Get both property label and description with a single VS lookup for efficiency
         /// Returns tuple with (Label, Description)
         /// </summary>
         private (string Label, string Description) GetPropertyLabelAndDescription(PropertyInfo prop, string objectTypeName)
@@ -909,7 +909,7 @@ namespace D365MetadataService.Handlers
                 Logger.Debug("🔍 Getting label and description for property '{PropertyName}' declared in type '{DeclaringType}' (full: '{FullType}') for object '{ObjectType}'", 
                     prop.Name, declaringTypeName, declaringTypeFullName, objectTypeName);
 
-                // Single VS2022 MetaModel lookup for both label and description
+                // Single VS MetaModel lookup for both label and description
                 var propertyDiscovery = _reflectionManager.GetAllPropertiesWithLabelsAndValues(objectTypeName);
                 if (propertyDiscovery.Success)
                 {

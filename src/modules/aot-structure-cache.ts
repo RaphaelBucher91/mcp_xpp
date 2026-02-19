@@ -174,24 +174,24 @@ export class AOTStructureCacheManager {
   }
 
   /**
-   * Get reflection data from VS2022 service using existing client
+   * Get reflection data from D365 service using existing client
    */
   private async getReflectionDataFromService(): Promise<any> {
     // Use the same connection pattern as other service calls - Named Pipe connection
     const client = new D365ServiceClient('mcp-xpp-d365-service', 30000, 60000);
 
     try {
-      console.log('Connecting to VS2022 service for AOT reflection...');
+      console.log('Connecting to D365 service for AOT reflection...');
       await client.connect();
       
       console.log('Requesting pure reflection data...');
       const response = await client.sendRequest('aotstructure', '', {});
 
       if (!response.Success || !response.Data) {
-        throw new Error(`VS2022 service error: ${response.Error || 'Unknown error'}`);
+        throw new Error(`D365 service error: ${response.Error || 'Unknown error'}`);
       }
 
-      console.log(`Retrieved ${response.Data.totalTypes} types from VS2022 service`);
+      console.log(`Retrieved ${response.Data.totalTypes} types from D365 service`);
       return response.Data;
 
     } finally {
@@ -206,7 +206,7 @@ export class AOTStructureCacheManager {
    */
   async generateAOTStructureCache(): Promise<void> {
     const startTime = Date.now();
-    console.log('Generating AOT structure cache using VS2022 service integration...');
+    console.log('Generating AOT structure cache using D365 service integration...');
 
     let sqliteLookup: SQLiteObjectLookup | null = null;
 
@@ -218,7 +218,7 @@ export class AOTStructureCacheManager {
         throw new Error('Failed to initialize SQLite database for AOT metadata storage');
       }
 
-      // Step 1: Get pure reflection data from VS2022 service  
+      // Step 1: Get pure reflection data from D365 service  
       const reflectionData = await this.getReflectionDataFromService();
       
       // Step 2: Apply MCP pattern-based categorization

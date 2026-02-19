@@ -43,8 +43,8 @@ namespace D365MetadataService.Handlers
                 }
                 else
                 {
-                    // Try to find it in VS2022 extension directory
-                    var extensionPath = _fileSystemManager.GetVS2022ExtensionPath();
+                    // Try to find it in VS extension directory
+                    var extensionPath = _fileSystemManager.GetVSExtensionPath();
                     if (!string.IsNullOrEmpty(extensionPath))
                     {
                         assemblyPath = _fileSystemManager.CombinePath(extensionPath, "Microsoft.Dynamics.AX.Metadata.dll");

@@ -1,8 +1,10 @@
 import { promises as fs } from "fs";
-import { basename, extname } from "path";
+import { existsSync } from "fs";
+import { basename, extname, join } from "path";
 import { xppObjectCache } from "./cache.js";
 import { AOTStructureManager } from "./aot-structure.js";
 import { SQLiteObjectLookup } from "./sqlite-lookup.js";
+import { AppConfig } from "./app-config.js";
 
 /**
  * Determine X++ object type based on file path using dynamic structure
@@ -193,6 +195,78 @@ export async function parseXppTable(filepath: string): Promise<any> {
 }
 
 /**
+ * Resolve a relative SQLite index path to an absolute filesystem path.
+ * 
+ * SQLite stores paths as: "ModelName/ObjectType/ObjectName" (from DLL indexer)
+ * or "Models/ModelName/ObjectType/ObjectName.xml" (from object creation).
+ * 
+ * Actual filesystem layout: <metadataRoot>/ModelName/ModelName/ObjectType/ObjectName.xml
+ * 
+ * Searches custom metadata folder first, then standard PackagesLocalDirectory.
+ */
+function resolveObjectPath(storedPath: string, modelName?: string): string {
+  const customMetadata = AppConfig.getXppMetadataFolder();
+  const standardMetadata = AppConfig.getXppPath();
+
+  // Normalize to forward slashes
+  let normalized = storedPath.replace(/\\/g, '/');
+
+  // Strip leading "Models/" prefix if present (from object creation paths)
+  if (normalized.startsWith('Models/')) {
+    normalized = normalized.substring('Models/'.length);
+  }
+  // Strip leading slash
+  if (normalized.startsWith('/')) {
+    normalized = normalized.substring(1);
+  }
+
+  // Parse: ModelName/ObjectType/ObjectName[.xml]
+  const parts = normalized.split('/');
+  if (parts.length < 3) {
+    return storedPath; // Can't resolve, return as-is
+  }
+
+  const model = parts[0];
+  const objectType = parts[1];
+  let objectName = parts.slice(2).join('/');
+
+  // Ensure .xml extension
+  if (!objectName.toLowerCase().endsWith('.xml')) {
+    objectName += '.xml';
+  }
+
+  // D365 AOT structure: <root>/Model/Model/AxType/Name.xml
+  const relativePath = join(model, model, objectType, objectName);
+
+  // Try custom metadata folder first (usually has custom/project-specific models)
+  if (customMetadata) {
+    const fullPath = join(customMetadata, relativePath);
+    if (existsSync(fullPath)) {
+      return fullPath;
+    }
+  }
+
+  // Try standard PackagesLocalDirectory
+  if (standardMetadata) {
+    const fullPath = join(standardMetadata, relativePath);
+    if (existsSync(fullPath)) {
+      return fullPath;
+    }
+  }
+
+  // If file not found, still return best-guess absolute path using custom metadata first
+  if (customMetadata) {
+    return join(customMetadata, relativePath);
+  }
+  if (standardMetadata) {
+    return join(standardMetadata, relativePath);
+  }
+
+  // Last resort: return original
+  return storedPath;
+}
+
+/**
  * Find X++ object by name across the codebase using SQLite index
  */
 export async function findXppObject(objectName: string, objectType?: string, model?: string): Promise<any[]> {
@@ -213,11 +287,11 @@ export async function findXppObject(objectName: string, objectType?: string, mod
         objects = objects.filter(obj => obj.model?.toLowerCase() === model.toLowerCase());
       }
       
-      // Convert to our expected format
+      // Convert to our expected format with resolved absolute paths
       for (const obj of objects) {
         results.push({
           name: obj.name,
-          path: obj.path,
+          path: resolveObjectPath(obj.path, obj.model),
           type: obj.type,
           model: obj.model
         });

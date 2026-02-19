@@ -4,7 +4,7 @@
  * MCP X++ Server - D365 F&O Object Management
  * 
  * This server provides MCP tools for browsing and creating D365 Finance & Operations objects.
- * It uses direct integration with VS2022 extension APIs for object creation and modification.
+ * It uses direct integration with Visual Studio extension APIs for object creation and modification.
  */
 
 // =============================================================================
@@ -92,7 +92,7 @@ async function runServer() {
     // Get paths from configuration
     const xppPath = AppConfig.getXppPath();
     const metadataFolder = AppConfig.getXppMetadataFolder();
-    const vs2022ExtensionPath = AppConfig.getVS2022ExtensionPath();
+    const vsExtensionPath = AppConfig.getVSExtensionPath();
     
     if (xppPath) {
       console.error(`XPP codebase path configured: ${xppPath}`);
@@ -101,8 +101,8 @@ async function runServer() {
         console.error(`XPP metadata folder configured: ${metadataFolder}`);
       }
 
-      if (vs2022ExtensionPath) {
-        console.error(`VS2022 extension path configured: ${vs2022ExtensionPath}`);
+      if (vsExtensionPath) {
+        console.error(`VS extension path configured: ${vsExtensionPath}`);
       }
     }
 

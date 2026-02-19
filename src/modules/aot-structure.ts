@@ -411,12 +411,12 @@ export class AOTStructureManager {
         return cachedTypes;
       }
       
-      console.log('⚠️  No cached object types found, falling back to VS2022 service');
+      console.log('No cached object types found, falling back to D365 service');
     } catch (error) {
       console.warn('Failed to retrieve cached object types:', error);
     }
 
-    // Fallback to VS2022 service if no cached data available
+    // Fallback to D365 service if no cached data available
     try {
       // Import D365ServiceClient dynamically to avoid circular dependencies
       const { D365ServiceClient } = await import('./d365-service-client.js');
@@ -424,7 +424,7 @@ export class AOTStructureManager {
       
       await client.connect();
       
-      // Query VS2022 service for available object types via reflection
+      // Query D365 service for available object types via reflection
       const result = await client.getAvailableObjectTypes();
       
       await client.disconnect();
@@ -446,18 +446,18 @@ export class AOTStructureManager {
         return dedupedTypes;
       }
       
-      throw new Error('Failed to get object types from VS2022 service');
+      throw new Error('Failed to get object types from D365 service');
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Failed to get object types from VS2022 service:', errorMessage);
+      console.error('Failed to get object types from D365 service:', errorMessage);
       // Minimal fallback - just enough to not break the system
       return ["AxModel", "AxClass", "AxTable", "AxEnum", "AxForm"];
     }
   }
 
   /**
-   * Get available object types from VS2022 service using reflection (runtime validation)
+   * Get available object types from D365 service using reflection (runtime validation)
    * This method provides the full list of 544+ object types discovered through reflection
    * Use this for validation and expansion beyond the basic static list
    */
@@ -472,12 +472,12 @@ export class AOTStructureManager {
         return cachedTypes;
       }
       
-      console.log('⚠️  No cached object types found, querying VS2022 service');
+      console.log('No cached object types found, querying D365 service');
     } catch (error) {
       console.warn('Failed to retrieve cached object types:', error);
     }
 
-    // Query VS2022 service if no cached data available
+    // Query D365 service if no cached data available
     try {
       // Import D365ServiceClient dynamically to avoid circular dependencies
       const { D365ServiceClient } = await import('./d365-service-client.js');
@@ -485,7 +485,7 @@ export class AOTStructureManager {
       
       await client.connect();
       
-      // Query VS2022 service for available object types via reflection
+      // Query D365 service for available object types via reflection
       const result = await client.getAvailableObjectTypes();
       
       await client.disconnect();
@@ -508,19 +508,19 @@ export class AOTStructureManager {
       }
       
       // Fallback to static method if service query fails
-      console.warn('VS2022 service reflection failed, using static method');
+      console.warn('D365 service reflection failed, using static method');
       return this.getAvailableObjectTypes();
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.warn('Failed to get object types from VS2022 service, using static method:', errorMessage);
+      console.warn('Failed to get object types from D365 service, using static method:', errorMessage);
       // Fallback to static method
       return this.getAvailableObjectTypes();
     }
   }
 
   /**
-   * Validate if an object type is supported by the VS2022 service
+   * Validate if an object type is supported by the D365 service
    * This uses the reflection-based discovery for accurate validation
    */
   static async validateObjectTypeSupported(objectType: string): Promise<boolean> {
@@ -538,7 +538,7 @@ export class AOTStructureManager {
   }
 
   static async getObjectTypeDefinition(objectType: string): Promise<any> {
-    // Get object type definition directly from VS2022 service
+    // Get object type definition directly from D365 service
     // No more template dependencies - use the real service data
     try {
       const { D365ServiceClient } = await import('./d365-service-client.js');
@@ -550,7 +550,7 @@ export class AOTStructureManager {
       
       return null; // For now, until we implement the service method
     } catch (error) {
-      console.error('Failed to get object type definition from VS2022 service:', error);
+      console.error('Failed to get object type definition from D365 service:', error);
       return null;
     }
   }

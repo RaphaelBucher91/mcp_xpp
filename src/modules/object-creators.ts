@@ -8,24 +8,25 @@ import { DiskLogger } from "./logger.js";
 /**
  * Object creation handlers for different D365 object types
  * 
- * This class uses direct VS2022 extension integration for object creation.
+ * This class uses direct D365 service integration for object creation.
  */
 export class ObjectCreators {
   /**
-   * Get VS2022 service client
+   * Get D365 service client
    */
   private static getServiceClient(timeoutMs: number = 10000): D365ServiceClient {
     return new D365ServiceClient('mcp-xpp-d365-service', timeoutMs, timeoutMs);
   }
 
   /**
-   * Create any D365 object type using VS2022 service (supports all 544+ object types)
+   * Create any D365 object type using D365 service (supports all 544+ object types)
    */
   static async createGenericObject(objectType: string, objectName: string, options: {
     layer?: string;
     publisher?: string;
     version?: string;
     dependencies?: string[];
+    model?: string;
     outputPath?: string;
     properties?: Record<string, any>;
   }): Promise<string> {
@@ -39,6 +40,15 @@ export class ObjectCreators {
         OutputPath: options.outputPath || 'Models',
         Layer: options.layer || 'usr'
       };
+
+      // Pass model to C# service for ModelSaveInfo creation
+      if (options.model) {
+        parameters.model = options.model;
+      } else {
+        // Use default model from CLI config if available
+        const defaultModel = AppConfig.getDefaultModel();
+        if (defaultModel) parameters.model = defaultModel;
+      }
 
       // Add optional parameters if provided
       if (options.publisher) parameters.Publisher = options.publisher;
@@ -65,7 +75,7 @@ export class ObjectCreators {
   }
   
   /**
-   * Create a model with all required structure using VS2022 service
+   * Create a model with all required structure using D365 service
    */
   static async createModel(modelName: string, options: {
     layer?: string;
@@ -101,7 +111,7 @@ export class ObjectCreators {
   }
 
   /**
-   * Create a class using VS2022 service
+   * Create a class using D365 service
    */
   static async createClass(className: string, options: { layer?: string; outputPath: string }): Promise<string> {
     try {
@@ -128,7 +138,7 @@ export class ObjectCreators {
   }
 
   /**
-   * Create a table using VS2022 service
+   * Create a table using D365 service
    */
   static async createTable(tableName: string, options: { layer?: string; outputPath: string }): Promise<string> {
     try {
@@ -155,7 +165,7 @@ export class ObjectCreators {
   }
 
   /**
-   * Create an enum using VS2022 service
+   * Create an enum using D365 service
    */
   static async createEnum(enumName: string, options: { layer?: string; outputPath: string }): Promise<string> {
     try {
@@ -182,7 +192,7 @@ export class ObjectCreators {
   }
 
   /**
-   * Create a form using VS2022 service
+   * Create a form using D365 service
    */
   static async createForm(formName: string, options: { layer?: string; outputPath: string }): Promise<string> {
     try {

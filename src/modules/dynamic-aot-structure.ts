@@ -3,7 +3,7 @@ import { AOTStructure, DiscoveredTypeInfo } from "./types.js";
 
 /**
  * Dynamic AOT Structure Manager - Replaces static aot-structure.json config
- * Uses pure reflection data from VS2022 service + pattern-based categorization
+ * Uses pure reflection data from D365 service + pattern-based categorization
  */
 export class DynamicAOTStructureManager {
   private static cachedStructure: AOTStructure | null = null;
@@ -240,7 +240,7 @@ export class DynamicAOTStructureManager {
 
     return {
       generatedAt: new Date().toISOString(),
-      source: "Dynamic reflection from VS2022 service",
+      source: "Dynamic reflection from D365 service",
       note: "This config is generated dynamically - no longer uses aot-structure.json",
       ...structure
     };
@@ -266,7 +266,7 @@ export class DynamicAOTStructureManager {
     return {
       totalTypes: this.discoveredObjectTypes.size,
       categories: this.cachedStructure ? Object.keys(this.cachedStructure.aotStructure).length : 0,
-      source: "Dynamic reflection from VS2022 service",
+      source: "Dynamic reflection from D365 service",
       configFile: "ELIMINATED - Using pure reflection data"
     };
   }

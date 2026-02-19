@@ -831,7 +831,7 @@ export class SQLiteObjectLookup {
 
     /**
      * Cache object types for fast retrieval
-     * Stores the complete list of available object types from VS2022 service
+     * Stores the complete list of available object types from D365 service
      */
     public async cacheObjectTypes(objectTypes: string[]): Promise<void> {
         // For write operations, we need to reopen database in write mode

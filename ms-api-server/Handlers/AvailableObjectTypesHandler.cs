@@ -12,7 +12,7 @@ using Serilog;
 namespace D365MetadataService.Handlers
 {
     /// <summary>
-    /// Handler for retrieving available object types from VS2022 service
+    /// Handler for retrieving available object types from D365 service
     /// REFACTORED: Now uses centralized D365ReflectionManager for consistent, cached reflection operations
     /// </summary>
     public class AvailableObjectTypesHandler : BaseRequestHandler

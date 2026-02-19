@@ -43,7 +43,7 @@ namespace D365MetadataService.Handlers
                     CustomMetadataPath = _config.D365Config.CustomMetadataPath,
                     DefaultModel = _config.D365Config.DefaultModel,
                     MetadataAssemblyPath = _config.D365Config.MetadataAssemblyPath,
-                    ExtensionPath = _fileSystemManager.GetVS2022ExtensionPath(),
+                    ExtensionPath = _fileSystemManager.GetVSExtensionPath(),
                     ServiceInfo = new
                     {
                         Transport = "NamedPipes",

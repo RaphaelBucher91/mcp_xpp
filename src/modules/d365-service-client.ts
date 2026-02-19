@@ -198,7 +198,7 @@ export class D365ServiceClient extends EventEmitter {
     }
 
     /**
-     * Get available object types from VS2022 service
+     * Get available object types from D365 service
      */
     async getAvailableObjectTypes(): Promise<any> {
         return this.sendRequest('getAvailableObjectTypes');
@@ -214,12 +214,13 @@ export class D365ServiceClient extends EventEmitter {
     /**
      * Execute a modification method on a specific D365 object
      */
-    async executeObjectModification(objectType: string, objectName: string, methodName: string, parameters: Record<string, any> = {}): Promise<any> {
+    async executeObjectModification(objectType: string, objectName: string, methodName: string, parameters: Record<string, any> = {}, model?: string): Promise<any> {
         return this.sendRequest('executeObjectModification', undefined, { 
             objectType, 
             objectName, 
             methodName, 
-            parameters 
+            parameters,
+            ...(model && { model })
         });
     }
 

@@ -104,7 +104,7 @@ namespace D365MetadataService.Models
     }
 
     /// <summary>
-    /// Result of comprehensive property discovery with VS2022 labels and possible values
+    /// Result of comprehensive property discovery with VS labels and possible values
     /// </summary>
     public class PropertyDiscoveryResult
     {

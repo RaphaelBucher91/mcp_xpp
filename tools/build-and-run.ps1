@@ -244,12 +244,30 @@ try {
             Set-Location "ms-api-server"
             
             # Get the actual VS extension path (used for both app.config and .csproj)
-            $vsInstallPath = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" | 
-                Where-Object { $_.DisplayName -like "*Visual Studio*2022*" } | 
-                Select-Object -First 1 -ExpandProperty InstallLocation
+            # Checks newest version first
+            $vsInstallPath = $null
             
+            # Supported VS version folders (newest first)
+            $vsVersionFolders = @(
+                @{ Display = "VS2026"; Folder = "18" },
+                @{ Display = "VS2022"; Folder = "2022" }
+            )
+            
+            foreach ($vs in $vsVersionFolders) {
+                foreach ($edition in @("Professional", "Enterprise", "Community")) {
+                    $candidatePath = "C:\Program Files\Microsoft Visual Studio\$($vs.Folder)\$edition"
+                    if (Test-Path $candidatePath) {
+                        $vsInstallPath = $candidatePath
+                        Write-Host ">> Found $($vs.Display) $edition at: $candidatePath" -ForegroundColor Cyan
+                        break
+                    }
+                }
+                if ($vsInstallPath) { break }
+            }
+
             if (!$vsInstallPath) {
                 $vsInstallPath = "C:\Program Files\Microsoft Visual Studio\2022\Professional\"
+                Write-Host ">> Warning: No Visual Studio installation found, using default: $vsInstallPath" -ForegroundColor Yellow
             }
             
             $extensionsPath = Join-Path $vsInstallPath "Common7\IDE\Extensions"

@@ -1,25 +1,41 @@
 // =============================================================================
-// VS2022 EXTENSION CONFIGURATION
+// VISUAL STUDIO D365 EXTENSION CONFIGURATION
 // =============================================================================
-// Helper module to access VS2022 extension path configuration
+// Helper module to access VS D365 extension path configuration
+// Supports VS2022 and VS2026+
 
 import { AppConfig } from "./app-config.js";
 import { join } from "path";
 import { promises as fs } from "fs";
 import { existsSync } from "fs";
 
+// Supported Visual Studio versions (newest first for priority detection)
+// VS2026 uses internal version "18" as folder name, VS2022 uses "2022"
+const VS_VERSIONS = ["18", "2022"];
+const VS_EDITIONS = ["Professional", "Enterprise", "Community"];
+const VS_PROGRAM_DIRS = ["C:\\Program Files\\Microsoft Visual Studio", "C:\\Program Files (x86)\\Microsoft Visual Studio"];
+
 /**
- * Auto-detect VS2022 D365 extension GUID by scanning the Extensions directory
+ * Build all candidate VS extension paths for supported versions
  */
-export async function autoDetectVS2022ExtensionPath(): Promise<string | undefined> {
-  const commonPaths = [
-    "C:\\Program Files\\Microsoft Visual Studio\\2022\\Professional\\Common7\\IDE\\Extensions",
-    "C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\Common7\\IDE\\Extensions",
-    "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\Extensions",
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\Professional\\Common7\\IDE\\Extensions",
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\Enterprise\\Common7\\IDE\\Extensions",
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\Extensions"
-  ];
+function buildVSExtensionSearchPaths(): string[] {
+  const paths: string[] = [];
+  for (const version of VS_VERSIONS) {
+    for (const programDir of VS_PROGRAM_DIRS) {
+      for (const edition of VS_EDITIONS) {
+        paths.push(join(programDir, version, edition, "Common7", "IDE", "Extensions"));
+      }
+    }
+  }
+  return paths;
+}
+
+/**
+ * Auto-detect VS D365 extension GUID by scanning the Extensions directory
+ * Scans VS2026 first, then VS2022 fallback
+ */
+export async function autoDetectVSExtensionPath(): Promise<string | undefined> {
+  const commonPaths = buildVSExtensionSearchPaths();
 
   for (const basePath of commonPaths) {
     if (!existsSync(basePath)) {
@@ -76,31 +92,31 @@ export async function autoDetectVS2022ExtensionPath(): Promise<string | undefine
 }
 
 /**
- * Get VS2022 extension path with auto-detection fallback
+ * Get VS extension path with auto-detection fallback
  */
-export async function getVS2022ExtensionPathWithAutoDetect(): Promise<string | undefined> {
+export async function getVSExtensionPathWithAutoDetect(): Promise<string | undefined> {
   // First try the configured path
-  const configuredPath = getVS2022ExtensionPath();
+  const configuredPath = getVSExtensionPath();
   if (configuredPath && existsSync(configuredPath)) {
     return configuredPath;
   }
 
   // If not configured or doesn't exist, try auto-detection
-  return await autoDetectVS2022ExtensionPath();
+  return await autoDetectVSExtensionPath();
 }
 
 /**
- * Get the configured VS2022 extension path
+ * Get the configured VS extension path
  */
-export function getVS2022ExtensionPath(): string | undefined {
-  return AppConfig.getVS2022ExtensionPath();
+export function getVSExtensionPath(): string | undefined {
+  return AppConfig.getVSExtensionPath();
 }
 
 /**
- * Get the full path to the VS2022 templates directory with auto-detection
+ * Get the full path to the VS templates directory with auto-detection
  */
-export async function getVS2022TemplatesPath(): Promise<string | undefined> {
-  const extensionPath = await getVS2022ExtensionPathWithAutoDetect();
+export async function getVSTemplatesPath(): Promise<string | undefined> {
+  const extensionPath = await getVSExtensionPathWithAutoDetect();
   if (!extensionPath) {
     return undefined;
   }
@@ -109,10 +125,10 @@ export async function getVS2022TemplatesPath(): Promise<string | undefined> {
 }
 
 /**
- * Get the full path to the VS2022 templates directory (synchronous - uses configured path only)
+ * Get the full path to the VS templates directory (synchronous - uses configured path only)
  */
-export function getVS2022TemplatesPathSync(): string | undefined {
-  const extensionPath = getVS2022ExtensionPath();
+export function getVSTemplatesPathSync(): string | undefined {
+  const extensionPath = getVSExtensionPath();
   if (!extensionPath) {
     return undefined;
   }
@@ -121,12 +137,12 @@ export function getVS2022TemplatesPathSync(): string | undefined {
 }
 
 /**
- * Get the full path to a VS2022 template ZIP file
+ * Get the full path to a VS template ZIP file
  * @param templateName - Name of the template (e.g., "Class", "Table", "Form")
- * @returns Full path to the template ZIP file if VS2022 path is configured
+ * @returns Full path to the template ZIP file if VS extension path is configured
  */
-export async function getVS2022TemplatePath(templateName: string): Promise<string | undefined> {
-  const templatesPath = await getVS2022TemplatesPath();
+export async function getVSTemplatePath(templateName: string): Promise<string | undefined> {
+  const templatesPath = await getVSTemplatesPath();
   if (!templatesPath) {
     return undefined;
   }
@@ -140,8 +156,8 @@ export async function getVS2022TemplatePath(templateName: string): Promise<strin
  * @param iconFileName - Name of the icon file (with extension)
  * @returns Path to the icon file if available
  */
-export async function getVS2022IconPath(templateName: string, iconFileName: string): Promise<string | undefined> {
-  const templatesPath = await getVS2022TemplatesPath();
+export async function getVSIconPath(templateName: string, iconFileName: string): Promise<string | undefined> {
+  const templatesPath = await getVSTemplatesPath();
   if (!templatesPath) {
     return undefined;
   }
@@ -151,10 +167,10 @@ export async function getVS2022IconPath(templateName: string, iconFileName: stri
 }
 
 /**
- * Check if VS2022 extension path is configured and accessible
+ * Check if VS extension path is configured and accessible
  */
-export async function isVS2022ExtensionAvailable(): Promise<boolean> {
-  const templatesPath = await getVS2022TemplatesPath();
+export async function isVSExtensionAvailable(): Promise<boolean> {
+  const templatesPath = await getVSTemplatesPath();
   if (!templatesPath) {
     return false;
   }
@@ -168,10 +184,10 @@ export async function isVS2022ExtensionAvailable(): Promise<boolean> {
 }
 
 /**
- * Get available VS2022 template names by scanning the extension directory
+ * Get available VS template names by scanning the extension directory
  */
-export async function getAvailableVS2022Templates(): Promise<string[]> {
-  const templatesPath = await getVS2022TemplatesPath();
+export async function getAvailableVSTemplates(): Promise<string[]> {
+  const templatesPath = await getVSTemplatesPath();
   if (!templatesPath) {
     return [];
   }
@@ -188,9 +204,9 @@ export async function getAvailableVS2022Templates(): Promise<string[]> {
 }
 
 /**
- * VS2022 Template Categories mapping for enhanced organization
+ * VS Template Categories mapping for enhanced organization
  */
-export const VS2022_TEMPLATE_CATEGORIES = {
+export const VS_TEMPLATE_CATEGORIES = {
   'Analytics': ['AggregateDataEntity', 'AggregateDimension', 'AggregateMeasurement', 'KPI'],
   'Business Process and Workflow': ['WorkflowApproval', 'WorkflowAutomatedTask', 'WorkflowCategory', 'WorkflowTask', 'WorkflowType'],
   'Code': ['Class', 'Interface', 'Macro', 'RunnableClass', 'TestClass'],
@@ -208,7 +224,7 @@ export const VS2022_TEMPLATE_CATEGORIES = {
  * Get the category for a given template name
  */
 export function getTemplateCategory(templateName: string): string | undefined {
-  for (const [category, templates] of Object.entries(VS2022_TEMPLATE_CATEGORIES)) {
+  for (const [category, templates] of Object.entries(VS_TEMPLATE_CATEGORIES)) {
     if ((templates as string[]).includes(templateName)) {
       return category;
     }
