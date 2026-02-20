@@ -140,6 +140,9 @@ namespace D365MetadataService
             services.AddSingleton<IRequestHandler, ObjectCollectionHandler>();
             services.AddSingleton<IRequestHandler, ObjectCodeHandler>();
 
+            // Register cross-reference handler
+            services.AddSingleton<IRequestHandler, CrossReferenceHandler>();
+
             // Register handler factory
             services.AddSingleton<RequestHandlerFactory>();
 

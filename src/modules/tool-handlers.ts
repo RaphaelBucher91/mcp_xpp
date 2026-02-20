@@ -2080,4 +2080,101 @@ export class ToolHandlers {
   }
 
 
+  static async findXppReferences(args: any, requestId: string): Promise<any> {
+    const schema = z.object({
+      objectName: z.string(),
+      objectType: z.string().optional(),
+      memberName: z.string().optional(),
+      objectPath: z.string().optional(),
+      direction: z.enum(["usedBy", "uses"]).optional().default("usedBy"),
+      referenceKind: z.string().optional(),
+      maxResults: z.number().optional().default(50),
+    });
+
+    const { objectName, objectType, memberName, objectPath, direction, referenceKind, maxResults } = schema.parse(args);
+
+    try {
+      const client = ObjectCreators['getServiceClient'](15000);
+      await client.connect();
+
+      const result = await client.sendRequest({
+        action: "crossreference",
+        parameters: {
+          objectName,
+          objectType: objectType || "AxClass",
+          memberName,
+          objectPath,
+          direction,
+          referenceKind: referenceKind || "any",
+          maxResults,
+        }
+      });
+
+      await client.disconnect();
+
+      if (!result.Success) {
+        return await createLoggedResponse(
+          `Failed to find references: ${result.Error || 'Unknown error'}`,
+          requestId,
+          "find_xpp_references"
+        );
+      }
+
+      const data = result.Data;
+      let content = "";
+
+      // Build display header
+      const targetDesc = memberName
+        ? `${objectName}.${memberName}`
+        : objectName;
+      const dirLabel = direction === "uses" ? "uses/calls" : "is used by";
+      content += `Cross-References: "${targetDesc}" ${dirLabel}\n`;
+      content += `Path: ${data.TargetPath}\n`;
+      content += `Direction: ${data.Direction} | Kind filter: ${data.KindFilter}\n`;
+      content += `Found: ${data.TotalFound}`;
+      if (data.TotalAvailable > data.TotalFound) {
+        content += ` (${data.TotalAvailable} total available, showing first ${data.TotalFound})`;
+      }
+      content += "\n\n";
+
+      // Summary by kind
+      if (data.SummaryByKind && Object.keys(data.SummaryByKind).length > 0) {
+        content += "Summary by kind:\n";
+        for (const [kind, count] of Object.entries(data.SummaryByKind)) {
+          content += `  ${kind}: ${count}\n`;
+        }
+        content += "\n";
+      }
+
+      // References list
+      if (data.References && data.References.length > 0) {
+        content += "References:\n";
+        for (const ref of data.References) {
+          const displayPath = direction === "uses" ? ref.TargetPath : ref.SourcePath;
+          content += `  [${ref.Kind}] ${displayPath}`;
+          if (ref.Line > 0) {
+            content += ` (line ${ref.Line}`;
+            if (ref.Column > 0) content += `:${ref.Column}`;
+            content += `)`;
+          }
+          content += "\n";
+        }
+      } else {
+        content += "No cross-references found for this object.\n";
+        content += "Tip: Ensure the XRef database has been built in Visual Studio (Build > Update Cross References).\n";
+      }
+
+      return await createLoggedResponse(content, requestId, "find_xpp_references");
+
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      return await createLoggedResponse(
+        `Failed to find references for "${objectName}": ${errorMsg}`,
+        requestId,
+        "find_xpp_references"
+      );
+    }
+  }
+
+
 }

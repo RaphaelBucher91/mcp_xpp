@@ -131,4 +131,30 @@ namespace D365MetadataService.Models
         public string CurrentValue { get; set; }
         public List<string> PossibleValues { get; set; } = new List<string>();
     }
+
+    /// <summary>
+    /// Result of a cross-reference query against the XRef database
+    /// </summary>
+    public class CrossReferenceResult
+    {
+        public string TargetPath { get; set; }
+        public string Direction { get; set; }
+        public string KindFilter { get; set; }
+        public int TotalFound { get; set; }
+        public int TotalAvailable { get; set; }
+        public Dictionary<string, int> SummaryByKind { get; set; } = new Dictionary<string, int>();
+        public List<CrossReferenceEntry> References { get; set; } = new List<CrossReferenceEntry>();
+    }
+
+    /// <summary>
+    /// A single cross-reference entry
+    /// </summary>
+    public class CrossReferenceEntry
+    {
+        public string SourcePath { get; set; }
+        public string TargetPath { get; set; }
+        public string Kind { get; set; }
+        public int Line { get; set; }
+        public int Column { get; set; }
+    }
 }

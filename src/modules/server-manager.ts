@@ -155,6 +155,9 @@ export class ServerManager {
           case "execute_object_modification":
             return await ToolHandlers.executeObjectModification(args, requestId);
           
+          case "find_xpp_references":
+            return await ToolHandlers.findXppReferences(args, requestId);
+          
           default:
             throw new McpError(
               ErrorCode.MethodNotFound,

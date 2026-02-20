@@ -818,6 +818,46 @@ export class ToolDefinitions {
             ]
           }
         },
+        {
+          name: "find_xpp_references",
+          description: "Find cross-references for X++ objects and methods. Queries the D365 XRef database to discover: who calls a method, what references a table/class, class inheritance hierarchy, interface implementations, and more. Supports bidirectional lookup: 'usedBy' (who calls/references this?) and 'uses' (what does this call/reference?). The XRef database must have been built in Visual Studio (Build > Update Cross References).",
+          inputSchema: {
+            type: "object",
+            properties: {
+              objectName: {
+                type: "string",
+                description: "Name of the X++ object (e.g., 'CustTable', 'SalesFormLetter')",
+              },
+              objectType: {
+                type: "string",
+                description: "D365 object type. Common values: 'AxClass', 'AxTable', 'AxForm', 'AxView', 'AxQuery', 'AxEnum', 'AxEdt', 'AxMap', 'AxDataEntityView', 'AxMenuItemDisplay'. Defaults to 'AxClass' if not specified.",
+              },
+              memberName: {
+                type: "string",
+                description: "Optional method or field name to narrow the search. Example: 'find' to get references to CustTable.find()",
+              },
+              objectPath: {
+                type: "string",
+                description: "Direct XRef logical path (advanced). Overrides objectType/objectName/memberName if provided. Example: '/Tables/CustTable/Methods/find', '/Classes/SalesFormLetter'",
+              },
+              direction: {
+                type: "string",
+                enum: ["usedBy", "uses"],
+                description: "Direction of reference lookup. 'usedBy' (default): find what calls/references this object. 'uses': find what this object calls/references.",
+              },
+              referenceKind: {
+                type: "string",
+                enum: ["any", "methodCall", "typeReference", "interfaceImplementation", "classExtended", "testCall", "property", "attribute", "methodOverride", "tag"],
+                description: "Filter by reference kind. 'any' (default) returns all kinds. 'methodCall' = direct method calls, 'typeReference' = variable declarations/casts, 'classExtended' = class inheritance, 'interfaceImplementation' = interface impls, 'methodOverride' = method overrides.",
+              },
+              maxResults: {
+                type: "number",
+                description: "Maximum number of references to return. Default: 50. Use higher values for comprehensive analysis.",
+              },
+            },
+            required: ["objectName"],
+          },
+        },
       ],
     };
   }
