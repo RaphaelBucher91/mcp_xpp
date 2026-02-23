@@ -1,4 +1,4 @@
-using D365MetadataService.Models;
+﻿using D365MetadataService.Models;
 using D365MetadataService.Services;
 using Serilog;
 using System;
@@ -35,7 +35,7 @@ namespace D365MetadataService.Handlers
 
             try
             {
-                Logger.Information("Handling Setup request: {@Request}", new { request.Action, request.Id });
+                Logger.Information("[Setup] Handling Setup request: {@Request}", new { request.Action, request.Id });
 
                 var setupInfo = new
                 {
@@ -54,12 +54,12 @@ namespace D365MetadataService.Handlers
                     Timestamp = DateTime.UtcNow
                 };
 
-                Logger.Information("Setup information retrieved successfully");
+                Logger.Information("[Setup] Setup information retrieved successfully");
                 return Task.FromResult(ServiceResponse.CreateSuccess(setupInfo));
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Failed to process setup request");
+                Logger.Error(ex, "[Setup] Failed to process setup request");
                 return Task.FromResult(ServiceResponse.CreateError($"Setup operation failed: {ex.Message}"));
             }
         }

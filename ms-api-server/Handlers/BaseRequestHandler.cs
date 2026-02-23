@@ -28,7 +28,8 @@ namespace D365MetadataService.Handlers
         public async Task<ServiceResponse> HandleAsync(ServiceRequest request)
         {
             var startTime = DateTime.UtcNow;
-            Logger.Information("Handling {Action} request for {ObjectType}", SupportedAction, request.ObjectType);
+            var context = !string.IsNullOrWhiteSpace(request.ObjectType) ? $" for {request.ObjectType}" : "";
+            Logger.Information("Handling {Action} request{Context}", SupportedAction, context);
 
             try
             {

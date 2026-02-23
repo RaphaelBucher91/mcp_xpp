@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using D365MetadataService.Models;
 using D365MetadataService.Services;
@@ -67,7 +67,7 @@ namespace D365MetadataService.Handlers
                 if (request.Parameters.TryGetValue("model", out var modelObj) && modelObj != null)
                 {
                     model = modelObj.ToString();
-                    Logger.Information("Model specified for modification: {Model}", model);
+                    Logger.Information("[ExecuteModification] Model specified for modification: {Model}", model);
                 }
 
                 // Extract method parameters (optional)
@@ -87,7 +87,7 @@ namespace D365MetadataService.Handlers
                     }
                 }
 
-                Logger.Information("Starting parameter validation for {MethodName} on {ObjectType}:{ObjectName} with {ParameterCount} parameters", 
+                Logger.Information("[ExecuteModification] Starting parameter validation for {MethodName} on {ObjectType}:{ObjectName} with {ParameterCount} parameters", 
                     methodName, objectType, objectName, methodParameters.Count);
 
                 // VALIDATION: Check if provided parameters match what the target type requires
@@ -99,26 +99,26 @@ namespace D365MetadataService.Handlers
                 {
                     var errorMessage = validationResult.ErrorMessage;
                     
-                    Logger.Warning("Parameter validation failed for {MethodName} on {ObjectType}:{ObjectName}: {Error}", 
+                    Logger.Warning("[ExecuteModification] Parameter validation failed for {MethodName} on {ObjectType}:{ObjectName}: {Error}", 
                         methodName, objectType, objectName, validationResult.ErrorMessage);
                     
                     return ServiceResponse.CreateError(errorMessage);
                 }
 
-                Logger.Information("✅ Parameter validation successful. Executing modification: {MethodName} on {ObjectType}:{ObjectName}", 
+                Logger.Information("[ExecuteModification] Parameter validation successful. Executing modification: {MethodName} on {ObjectType}:{ObjectName}", 
                     methodName, objectType, objectName);
 
                 // Use the dynamic reflection service to execute the modification with model targeting
                 var result = await _reflectionService.ExecuteObjectModificationAsync(objectType, objectName, methodName, methodParameters, model);
 
-                Logger.Information("Successfully executed {MethodName} on {ObjectType}:{ObjectName}", 
+                Logger.Information("[ExecuteModification] Successfully executed {MethodName} on {ObjectType}:{ObjectName}", 
                     methodName, objectType, objectName);
 
                 return ServiceResponse.CreateSuccess(result);
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error executing object modification");
+                Logger.Error(ex, "[ExecuteModification] Error executing object modification");
                 return ServiceResponse.CreateError($"Error executing modification: {ex.Message}");
             }
         }

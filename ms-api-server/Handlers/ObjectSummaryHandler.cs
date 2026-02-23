@@ -1,4 +1,4 @@
-using D365MetadataService.Models;
+﻿using D365MetadataService.Models;
 using D365MetadataService.Services;
 using Serilog;
 using System;
@@ -30,7 +30,7 @@ namespace D365MetadataService.Handlers
             if (validationError != null)
                 return validationError;
 
-            Logger.Information("Handling Object Summary request: {@Request}", new { request.Action, request.Id });
+            Logger.Information("[ObjectSummary] Handling Object Summary request: {@Request}", new { request.Action, request.Id });
 
             try
             {
@@ -55,7 +55,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error getting object summary");
+                Logger.Error(ex, "[ObjectSummary] Error getting object summary");
                 return ServiceResponse.CreateError($"Failed to get object summary: {ex.Message}");
             }
         }

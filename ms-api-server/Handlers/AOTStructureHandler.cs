@@ -1,4 +1,4 @@
-using D365MetadataService.Models;
+﻿using D365MetadataService.Models;
 using D365MetadataService.Services;
 using Serilog;
 using System;
@@ -31,7 +31,7 @@ namespace D365MetadataService.Handlers
             if (validationError != null)
                 return validationError;
 
-            Logger.Information("Handling AOT Structure request: {@Request}", new { request.Action, request.Id });
+            Logger.Information("[AOTStructure] Handling AOT Structure request: {@Request}", new { request.Action, request.Id });
 
             try
             {
@@ -80,7 +80,7 @@ namespace D365MetadataService.Handlers
                         .OrderBy(t => t.Name)
                         .ToList();
 
-                    Logger.Information("Found {TypeCount} types from metadata assembly", types.Count);
+                    Logger.Information("[AOTStructure] Found {TypeCount} types from metadata assembly", types.Count);
 
                     return new
                     {
@@ -95,7 +95,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Failed to process AOT structure request");
+                Logger.Error(ex, "[AOTStructure] Failed to process AOT structure request");
                 return ServiceResponse.CreateError($"AOT structure operation failed: {ex.Message}");
             }
         }

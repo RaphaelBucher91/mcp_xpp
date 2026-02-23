@@ -1,4 +1,4 @@
-using D365MetadataService.Models;
+﻿using D365MetadataService.Models;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -23,7 +23,7 @@ namespace D365MetadataService.Handlers
             // Register all handlers by their supported action
             _handlers = handlers.ToDictionary(h => h.SupportedAction.ToLower(), h => h);
             
-            _logger.Information("Registered {HandlerCount} request handlers: {Actions}", 
+            _logger.Information("[HandlerFactory] Registered {HandlerCount} request handlers: {Actions}", 
                 _handlers.Count, 
                 string.Join(", ", _handlers.Keys));
         }

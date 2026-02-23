@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -42,7 +42,7 @@ namespace D365MetadataService.Services
         private FileSystemManager()
         {
             _logger = Serilog.Log.ForContext<FileSystemManager>();
-            _logger.Information("🚀 Initializing File System Manager...");
+            _logger.Information("[FileSystem] Initializing File System Manager...");
         }
 
         /// <summary>
@@ -83,7 +83,7 @@ namespace D365MetadataService.Services
             }
             catch (Exception ex)
             {
-                _logger.Warning(ex, "⚠️ Error checking file existence: {FilePath}", filePath);
+                _logger.Warning(ex, "[FileSystem] Error checking file existence: {FilePath}", filePath);
                 return false;
             }
         }
@@ -117,7 +117,7 @@ namespace D365MetadataService.Services
             }
             catch (Exception ex)
             {
-                _logger.Warning(ex, "⚠️ Error checking directory existence: {DirectoryPath}", directoryPath);
+                _logger.Warning(ex, "[FileSystem] Error checking directory existence: {DirectoryPath}", directoryPath);
                 return false;
             }
         }
@@ -154,7 +154,7 @@ namespace D365MetadataService.Services
             }
             catch (Exception ex)
             {
-                _logger.Warning(ex, "⚠️ Error enumerating directories: {Path}", path);
+                _logger.Warning(ex, "[FileSystem] Error enumerating directories: {Path}", path);
                 return Array.Empty<string>();
             }
         }
@@ -178,7 +178,7 @@ namespace D365MetadataService.Services
             }
             catch (Exception ex)
             {
-                _logger.Warning(ex, "⚠️ Error combining paths: {@Paths}", paths);
+                _logger.Warning(ex, "[FileSystem] Error combining paths: {@Paths}", paths);
                 return string.Empty;
             }
         }
@@ -197,7 +197,7 @@ namespace D365MetadataService.Services
             }
             catch (Exception ex)
             {
-                _logger.Warning(ex, "⚠️ Error getting directory name: {Path}", path);
+                _logger.Warning(ex, "[FileSystem] Error getting directory name: {Path}", path);
                 return string.Empty;
             }
         }
@@ -242,13 +242,13 @@ namespace D365MetadataService.Services
 
             try
             {
-                _logger.Information("Discovering VS D365 extension path for {Assembly}...", targetAssembly);
+                _logger.Information("[FileSystem] Discovering VS D365 extension path for {Assembly}...", targetAssembly);
 
                 foreach (var basePath in BuildVSExtensionSearchPaths())
                 {
                     if (DirectoryExists(basePath))
                     {
-                        _logger.Debug("Searching in {BasePath}...", basePath);
+                        _logger.Debug("[FileSystem] Searching in {BasePath}...", basePath);
                         
                         var extensionDirs = GetDirectories(basePath);
                         foreach (var dir in extensionDirs)
@@ -256,7 +256,7 @@ namespace D365MetadataService.Services
                             var assemblyPath = CombinePath(dir, targetAssembly);
                             if (FileExists(assemblyPath))
                             {
-                                _logger.Information("Found VS D365 extension at: {ExtensionPath}", dir);
+                                _logger.Information("[FileSystem] Found VS D365 extension at: {ExtensionPath}", dir);
                                 
                                 // Cache successful result
                                 _extensionPathCache[cacheKey] = dir;
@@ -268,7 +268,7 @@ namespace D365MetadataService.Services
                     }
                 }
 
-                _logger.Warning("VS D365 extension path not found for {Assembly}", targetAssembly);
+                _logger.Warning("[FileSystem] VS D365 extension path not found for {Assembly}", targetAssembly);
                 
                 // Cache negative result (shorter expiration)
                 _extensionPathCache[cacheKey] = string.Empty;
@@ -278,7 +278,7 @@ namespace D365MetadataService.Services
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Error discovering VS D365 extension path");
+                _logger.Error(ex, "[FileSystem] Error discovering VS D365 extension path");
                 return string.Empty;
             }
         }
@@ -302,17 +302,17 @@ namespace D365MetadataService.Services
                 if (!FileExists(normalizedPath))
                     throw new FileNotFoundException($"Assembly not found: {normalizedPath}");
 
-                _logger.Information("📦 Loading assembly from: {AssemblyPath}", normalizedPath);
+                _logger.Information("[FileSystem] Loading assembly from: {AssemblyPath}", normalizedPath);
                 
                 var assembly = Assembly.LoadFrom(normalizedPath);
                 
-                _logger.Information("✅ Successfully loaded assembly: {AssemblyName}", assembly.FullName);
+                _logger.Information("[FileSystem] Successfully loaded assembly: {AssemblyName}", assembly.FullName);
                 
                 return assembly;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "❌ Failed to load assembly from: {AssemblyPath}", assemblyPath);
+                _logger.Error(ex, "[FileSystem] Failed to load assembly from: {AssemblyPath}", assemblyPath);
                 throw;
             }
         }
@@ -353,11 +353,11 @@ namespace D365MetadataService.Services
                 }
 
                 if (expiredKeys.Count > 0)
-                    _logger.Debug("🧹 Cleared {Count} expired cache entries", expiredKeys.Count);
+                    _logger.Debug("[FileSystem] Cleared {Count} expired cache entries", expiredKeys.Count);
             }
             catch (Exception ex)
             {
-                _logger.Warning(ex, "⚠️ Error clearing expired cache");
+                _logger.Warning(ex, "[FileSystem] Error clearing expired cache");
             }
         }
 

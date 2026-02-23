@@ -1,4 +1,4 @@
-using D365MetadataService.Models;
+﻿using D365MetadataService.Models;
 using D365MetadataService.Services;
 using Serilog;
 using System;
@@ -34,7 +34,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error getting parameter schemas");
+                Logger.Error(ex, "[ParameterSchemas] Error getting parameter schemas");
                 return Task.FromResult(ServiceResponse.CreateError($"Failed to get parameter schemas: {ex.Message}"));
             }
         }

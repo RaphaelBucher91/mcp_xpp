@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.IO;
@@ -35,15 +35,15 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                _logger.Information("CreateFormHandler: Starting enhanced form creation with pattern support");
+                _logger.Information("[CreateForm] Starting enhanced form creation with pattern support");
                 
                 var parameters = request.Parameters ?? new Dictionary<string, object>();
                 
                 // Debug parameters
-                _logger.Information("📝 Form creation parameters received:");
+                _logger.Information("[CreateForm] Form creation parameters received:");
                 foreach (var param in parameters)
                 {
-                    _logger.Information("  {Key} = {Value} ({Type})", param.Key, param.Value, param.Value?.GetType().Name ?? "null");
+                    _logger.Information("[CreateForm]   {Key} = {Value} ({Type})", param.Key, param.Value, param.Value?.GetType().Name ?? "null");
                 }
 
                 // Extract form parameters
@@ -53,7 +53,7 @@ namespace D365MetadataService.Handlers
                 var modelName = ExtractParameter(parameters, new[] { "modelName", "model" }, "ApplicationSuite");
                 var dataSources = ExtractDataSources(parameters);
 
-                _logger.Information("📝 Extracted parameters - FormName: '{FormName}', Pattern: '{Pattern}', Version: '{Version}', Model: '{Model}', DataSources: [{DataSources}]", 
+                _logger.Information("[CreateForm] Extracted parameters - FormName: '{FormName}', Pattern: '{Pattern}', Version: '{Version}', Model: '{Model}', DataSources: [{DataSources}]", 
                     formName, patternName, patternVersion, modelName, dataSources != null ? string.Join(", ", dataSources) : "none");
 
                 if (string.IsNullOrEmpty(formName))
@@ -68,7 +68,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Exception in CreateFormHandler");
+                _logger.Error(ex, "[CreateForm] Exception in CreateFormHandler");
                 return ServiceResponse.CreateError($"Form creation failed: {ex.Message}");
             }
         }
@@ -140,7 +140,7 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                _logger.Information("🔧 Creating form '{FormName}' with pattern '{Pattern}' version '{Version}'", formName, patternName, patternVersion);
+                _logger.Information("[CreateForm] Creating form '{FormName}' with pattern '{Pattern}' version '{Version}'", formName, patternName, patternVersion);
 
                 // Create the form object
                 var formParameters = new Dictionary<string, object>(parameters)
@@ -152,29 +152,29 @@ namespace D365MetadataService.Handlers
                 
                 if (!formCreationResult.Success)
                 {
-                    _logger.Error("Form creation failed: {Error}", formCreationResult.ErrorMessage);
+                    _logger.Error("[CreateForm] Form creation failed: {Error}", formCreationResult.ErrorMessage);
                     throw new Exception($"Form creation failed: {formCreationResult.ErrorMessage}");
                 }
                 
-                _logger.Information("✅ Form creation result received successfully");
+                _logger.Information("[CreateForm] Form creation result received successfully");
 
                 // Get the actual AxForm instance from the factory
                 var formInstance = _objectFactory.GetExistingObject("AxForm", formName);
                 if (formInstance == null)
                 {
-                    _logger.Error("Could not retrieve created form instance from factory");
+                    _logger.Error("[CreateForm] Could not retrieve created form instance from factory");
                     throw new Exception("Could not retrieve created form instance from factory");
                 }
 
-                _logger.Information("✅ Retrieved actual AxForm instance: {FormType}", formInstance.GetType().FullName);
+                _logger.Information("[CreateForm] Retrieved actual AxForm instance: {FormType}", formInstance.GetType().FullName);
 
                 // Add datasources if specified
                 int dataSourcesAdded = 0;
                 if (dataSources != null && dataSources.Length > 0)
                 {
-                    _logger.Information("🗄️ Adding {Count} datasource(s) to form: [{DataSources}]", dataSources.Length, string.Join(", ", dataSources));
+                    _logger.Information("[CreateForm] Adding {Count} datasource(s) to form: [{DataSources}]", dataSources.Length, string.Join(", ", dataSources));
                     dataSourcesAdded = await AddDataSourcesToFormAsync(formInstance, dataSources);
-                    _logger.Information("DataSources addition result: {Count} added successfully", dataSourcesAdded);
+                    _logger.Information("[CreateForm] DataSources addition result: {Count} added successfully", dataSourcesAdded);
                 }
 
                 // Apply pattern if requested
@@ -184,12 +184,12 @@ namespace D365MetadataService.Handlers
                     // For patterns that require field controls, add them before applying the pattern
                     if (RequiresFieldControls(patternName) && dataSources != null && dataSources.Length > 0)
                     {
-                        _logger.Information("🎛️ Pattern '{PatternName}' requires field controls - adding fields from datasources", patternName);
+                        _logger.Information("[CreateForm] Pattern '{PatternName}' requires field controls - adding fields from datasources", patternName);
                         await AddFieldControlsFromDataSourcesAsync(formInstance, dataSources);
                     }
 
                     patternApplied = await ApplyPatternToFormAsync(formInstance, patternName, patternVersion);
-                    _logger.Information("Pattern application result: {Result}", patternApplied ? "Success" : "Failed");
+                    _logger.Information("[CreateForm] Pattern application result: {Result}", patternApplied ? "Success" : "Failed");
                     
                     // CRITICAL: Save the form after pattern application to persist changes
                     if (patternApplied)
@@ -197,11 +197,11 @@ namespace D365MetadataService.Handlers
                         var saveSuccess = await _objectFactory.SaveObjectAsync("AxForm", formName, formInstance);
                         if (saveSuccess)
                         {
-                            _logger.Information("✅ Form successfully saved to metadata store after pattern application");
+                            _logger.Information("[CreateForm] Form successfully saved to metadata store after pattern application");
                         }
                         else
                         {
-                            _logger.Warning("⚠️ Pattern applied but failed to save form to metadata store");
+                            _logger.Warning("[CreateForm] Pattern applied but failed to save form to metadata store");
                         }
                     }
                 }
@@ -221,7 +221,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Exception in CreateFormWithPatternAsync");
+                _logger.Error(ex, "[CreateForm] Exception in CreateFormWithPatternAsync");
                 return new
                 {
                     Success = false,
@@ -236,24 +236,24 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                _logger.Information("🎯 Applying pattern '{Pattern}' version '{Version}' to form", patternName, patternVersion);
+                _logger.Information("[CreateForm] Applying pattern '{Pattern}' version '{Version}' to form", patternName, patternVersion);
 
                 // Get or create the form design
                 var formDesign = GetOrCreateFormDesign(formInstance);
                 if (formDesign == null)
                 {
-                    _logger.Error("Unable to get or create form design");
+                    _logger.Error("[CreateForm] Unable to get or create form design");
                     return false;
                 }
 
-                _logger.Information("✅ Form design obtained successfully");
+                _logger.Information("[CreateForm] Form design obtained successfully");
 
                 // Load patterns assembly and apply pattern
                 return await ApplyPatternToDesignAsync(formDesign, patternName, patternVersion);
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Exception applying pattern to form");
+                _logger.Error(ex, "[CreateForm] Exception applying pattern to form");
                 return false;
             }
         }
@@ -263,11 +263,11 @@ namespace D365MetadataService.Handlers
             try
             {
                 var formType = formInstance.GetType();
-                _logger.Information("🔍 Form instance type: {FormType}", formType.FullName);
+                _logger.Information("[CreateForm] Form instance type: {FormType}", formType.FullName);
 
                 // List all properties to debug
                 var properties = formType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-                _logger.Information("Available properties: {Properties}", 
+                _logger.Information("[CreateForm] Available properties: {Properties}", 
                     string.Join(", ", properties.Select(p => p.Name)));
 
                 // Try different ways to access the form design
@@ -275,37 +275,37 @@ namespace D365MetadataService.Handlers
                 var designProperty = formType.GetProperty("Design");
                 if (designProperty != null)
                 {
-                    _logger.Information("✅ Found Design property directly");
+                    _logger.Information("[CreateForm] Found Design property directly");
                     var design = designProperty.GetValue(formInstance);
                     if (design != null)
                     {
                         return design;
                     }
-                    _logger.Information("Design property exists but is null, creating new design");
+                    _logger.Information("[CreateForm] Design property exists but is null, creating new design");
                 }
                 else
                 {
-                    _logger.Information("Design property not found directly, trying alternative approaches");
+                    _logger.Information("[CreateForm] Design property not found directly, trying alternative approaches");
                 }
 
                 // Option 2: Try to get Designs collection (forms can have multiple designs)
                 var designsProperty = formType.GetProperty("Designs");
                 if (designsProperty != null)
                 {
-                    _logger.Information("✅ Found Designs collection property");
+                    _logger.Information("[CreateForm] Found Designs collection property");
                     var designs = designsProperty.GetValue(formInstance);
                     if (designs != null)
                     {
                         // Check if it's a collection
                         var designsType = designs.GetType();
-                        _logger.Information("Designs collection type: {Type}", designsType.FullName);
+                        _logger.Information("[CreateForm] Designs collection type: {Type}", designsType.FullName);
                         
                         // Try to get the first design or create one
                         var countProperty = designsType.GetProperty("Count");
                         if (countProperty != null)
                         {
                             var count = (int)countProperty.GetValue(designs);
-                            _logger.Information("Designs collection count: {Count}", count);
+                            _logger.Information("[CreateForm] Designs collection count: {Count}", count);
                             
                             if (count > 0)
                             {
@@ -314,7 +314,7 @@ namespace D365MetadataService.Handlers
                                 if (itemProperty != null)
                                 {
                                     var firstDesign = itemProperty.GetValue(designs, new object[] { 0 });
-                                    _logger.Information("✅ Retrieved first design from collection");
+                                    _logger.Information("[CreateForm] Retrieved first design from collection");
                                     return firstDesign;
                                 }
                             }
@@ -327,22 +327,22 @@ namespace D365MetadataService.Handlers
                             var designType = typeof(Microsoft.Dynamics.AX.Metadata.MetaModel.AxFormDesign);
                             var newDesign = Activator.CreateInstance(designType);
                             addMethod.Invoke(designs, new[] { newDesign });
-                            _logger.Information("✅ Created and added new design to collection");
+                            _logger.Information("[CreateForm] Created and added new design to collection");
                             return newDesign;
                         }
                     }
                 }
 
                 // Option 3: Create a new design manually
-                _logger.Information("Creating new standalone form design");
+                _logger.Information("[CreateForm] Creating new standalone form design");
                 var standaloneDesignType = typeof(Microsoft.Dynamics.AX.Metadata.MetaModel.AxFormDesign);
                 var standaloneDesign = Activator.CreateInstance(standaloneDesignType);
-                _logger.Information("✅ Created standalone form design");
+                _logger.Information("[CreateForm] Created standalone form design");
                 return standaloneDesign;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Exception getting or creating form design");
+                _logger.Error(ex, "[CreateForm] Exception getting or creating form design");
                 return null;
             }
         }
@@ -351,7 +351,7 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                _logger.Information("🔍 Loading pattern assembly and discovering pattern");
+                _logger.Information("[CreateForm] Loading pattern assembly and discovering pattern");
 
                 // Load the Patterns assembly
                 var vsExtensionPath = @"C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\Extensions\avm13osb.viu";
@@ -359,7 +359,7 @@ namespace D365MetadataService.Handlers
 
                 if (!File.Exists(patternsAssemblyPath))
                 {
-                    _logger.Error("Patterns assembly not found at {Path}", patternsAssemblyPath);
+                    _logger.Error("[CreateForm] Patterns assembly not found at {Path}", patternsAssemblyPath);
                     return false;
                 }
 
@@ -369,13 +369,13 @@ namespace D365MetadataService.Handlers
 
                 if (patternFactoryType == null || extensionsType == null)
                 {
-                    _logger.Error("Required pattern types not found in assembly");
+                    _logger.Error("[CreateForm] Required pattern types not found in assembly");
                     return false;
                 }
 
                 // Create PatternFactory instance
                 var patternFactory = Activator.CreateInstance(patternFactoryType, new object[] { true });
-                _logger.Information("✅ PatternFactory created");
+                _logger.Information("[CreateForm] PatternFactory created");
 
                 // Get the pattern - First discover available versions dynamically
                 var getPatternsByNameMethod = patternFactoryType.GetMethod("GetPatternsByName", new[] { typeof(string), typeof(bool) });
@@ -383,7 +383,7 @@ namespace D365MetadataService.Handlers
                 
                 if (getPatternsByNameMethod == null || getPatternMethod == null)
                 {
-                    _logger.Error("Pattern discovery methods not found");
+                    _logger.Error("[CreateForm] Pattern discovery methods not found");
                     return false;
                 }
 
@@ -396,18 +396,18 @@ namespace D365MetadataService.Handlers
                     pattern = getPatternMethod.Invoke(patternFactory, new object[] { patternName, patternVersion, false });
                     if (pattern != null)
                     {
-                        _logger.Information("✅ Pattern found with specified version: {PatternName} {Version}", patternName, patternVersion);
+                        _logger.Information("[CreateForm] Pattern found with specified version: {PatternName} {Version}", patternName, patternVersion);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.Debug(ex, "Failed to get pattern with specified version {Version}", patternVersion);
+                    _logger.Debug(ex, "[CreateForm] Failed to get pattern with specified version {Version}", patternVersion);
                 }
 
                 // If not found with specified version, discover available versions
                 if (pattern == null)
                 {
-                    _logger.Information("🔍 Pattern '{PatternName}' not found with version '{Version}', discovering available versions...", patternName, patternVersion);
+                    _logger.Information("[CreateForm] Pattern '{PatternName}' not found with version '{Version}', discovering available versions...", patternName, patternVersion);
                     
                     try
                     {
@@ -419,7 +419,7 @@ namespace D365MetadataService.Handlers
                             var patternsList = availablePatterns as System.Collections.IList;
                             if (patternsList != null && patternsList.Count > 0)
                             {
-                                _logger.Information("📋 Found {Count} version(s) of pattern '{PatternName}':", patternsList.Count, patternName);
+                                _logger.Information("[CreateForm] Found {Count} version(s) of pattern '{PatternName}':", patternsList.Count, patternName);
                                 
                                 // List all available versions
                                 for (int i = 0; i < patternsList.Count; i++)
@@ -432,7 +432,7 @@ namespace D365MetadataService.Handlers
                                     {
                                         var availableVersion = versionProp.GetValue(availablePattern)?.ToString();
                                         var availableName = nameProp.GetValue(availablePattern)?.ToString();
-                                        _logger.Information("   📌 {Name} version {Version}", availableName, availableVersion);
+                                        _logger.Information("[CreateForm]    {Name} version {Version}", availableName, availableVersion);
                                     }
                                 }
                                 
@@ -442,70 +442,70 @@ namespace D365MetadataService.Handlers
                                 if (firstVersionProp != null)
                                 {
                                     actualPatternVersion = firstVersionProp.GetValue(pattern)?.ToString() ?? patternVersion;
-                                    _logger.Information("✅ Using pattern version: {Version}", actualPatternVersion);
+                                    _logger.Information("[CreateForm] Using pattern version: {Version}", actualPatternVersion);
                                 }
                             }
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.Warning(ex, "Failed to discover pattern versions for {PatternName}", patternName);
+                        _logger.Warning(ex, "[CreateForm] Failed to discover pattern versions for {PatternName}", patternName);
                     }
                 }
 
                 if (pattern == null)
                 {
-                    _logger.Warning("❌ Pattern '{PatternName}' not found with any version. Available patterns may not include this name.", patternName);
+                    _logger.Warning("[CreateForm] Pattern '{PatternName}' not found with any version. Available patterns may not include this name.", patternName);
                     return false;
                 }
 
-                _logger.Information("✅ Pattern found: {PatternName} {Version}", patternName, actualPatternVersion);
+                _logger.Information("[CreateForm] Pattern found: {PatternName} {Version}", patternName, actualPatternVersion);
 
                 // INSPECT THE PATTERN STRUCTURE TO GET ACTUAL CONTROL TYPE REQUIREMENTS
-                _logger.Information("🔍 Inspecting pattern structure for actual control types...");
+                _logger.Information("[CreateForm] Inspecting pattern structure for actual control types...");
                 InspectPatternStructure(pattern);
 
                 // CRITICAL: Build required structure BEFORE applying pattern
                 // Pattern validation expects the controls to already exist!
-                _logger.Information("🏗️ Building required structure before pattern application (pattern expects existing controls)");
+                _logger.Information("[CreateForm] Building required structure before pattern application (pattern expects existing controls)");
                 await BuildStructureFromPattern(formDesign, pattern);
                 
                 // Validate what was built
-                _logger.Information("🔍 VALIDATION: Checking what was built before pattern application");
+                _logger.Information("[CreateForm] VALIDATION: Checking what was built before pattern application");
                 ValidateBuiltStructure(formDesign);
 
                 // Apply the pattern (validates existing structure and applies property fixes)
                 var applyPatternMethod = extensionsType.GetMethod("ApplyPattern", BindingFlags.Public | BindingFlags.Static);
                 if (applyPatternMethod == null)
                 {
-                    _logger.Error("ApplyPattern method not found");
+                    _logger.Error("[CreateForm] ApplyPattern method not found");
                     return false;
                 }
 
-                _logger.Information("🔍 ApplyPattern method found: {MethodInfo}", applyPatternMethod);
-                _logger.Information("🔍 Method parameters: {Parameters}", 
+                _logger.Information("[CreateForm] ApplyPattern method found: {MethodInfo}", applyPatternMethod);
+                _logger.Information("[CreateForm] Method parameters: {Parameters}", 
                     string.Join(", ", applyPatternMethod.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}")));
 
                 // Debug form design state before pattern application
-                _logger.Information("🔍 Form design type: {DesignType}", formDesign.GetType().FullName);
+                _logger.Information("[CreateForm] Form design type: {DesignType}", formDesign.GetType().FullName);
                 
                 // Check if formDesign implements IPatternable
                 var iPatternableType = typeof(Microsoft.Dynamics.AX.Metadata.MetaModel.IPatternable);
                 bool implementsIPatternable = iPatternableType.IsAssignableFrom(formDesign.GetType());
-                _logger.Information("🔍 FormDesign implements IPatternable: {ImplementsIPatternable}", implementsIPatternable);
+                _logger.Information("[CreateForm] FormDesign implements IPatternable: {ImplementsIPatternable}", implementsIPatternable);
                 
                 // Check parameter types match exactly
                 var methodParams = applyPatternMethod.GetParameters();
                 if (methodParams.Length >= 2)
                 {
-                    _logger.Debug("Expected parameter types:");
-                    _logger.Debug("  [0] {ParamType} (formDesign is: {ActualType})", methodParams[0].ParameterType.FullName, formDesign.GetType().FullName);
-                    _logger.Debug("  [1] {ParamType} (pattern is: {ActualType})", methodParams[1].ParameterType.FullName, pattern.GetType().FullName);
+                    _logger.Debug("[CreateForm] Expected parameter types:");
+                    _logger.Debug("[CreateForm]   [0] {ParamType} (formDesign is: {ActualType})", methodParams[0].ParameterType.FullName, formDesign.GetType().FullName);
+                    _logger.Debug("[CreateForm]   [1] {ParamType} (pattern is: {ActualType})", methodParams[1].ParameterType.FullName, pattern.GetType().FullName);
                     
                     // Check type compatibility
                     bool param0Compatible = methodParams[0].ParameterType.IsAssignableFrom(formDesign.GetType());
                     bool param1Compatible = methodParams[1].ParameterType.IsAssignableFrom(pattern.GetType());
-                    _logger.Debug("Parameter compatibility: param0={Param0Compatible}, param1={Param1Compatible}", param0Compatible, param1Compatible);
+                    _logger.Debug("[CreateForm] Parameter compatibility: param0={Param0Compatible}, param1={Param1Compatible}", param0Compatible, param1Compatible);
                 }
                 
                 // Check for existing pattern
@@ -514,12 +514,12 @@ namespace D365MetadataService.Handlers
                 if (existingPatternProp != null)
                 {
                     var existingPattern = existingPatternProp.GetValue(formDesign);
-                    _logger.Debug("Existing pattern on design: {ExistingPattern}", existingPattern ?? "null");
+                    _logger.Debug("[CreateForm] Existing pattern on design: {ExistingPattern}", existingPattern ?? "null");
                 }
 
                 // Check pattern type
                 var patternType = pattern.GetType();
-                _logger.Debug("Pattern object type: {PatternType}", patternType.FullName);
+                _logger.Debug("[CreateForm] Pattern object type: {PatternType}", patternType.FullName);
                 
                 // Get pattern details
                 try
@@ -531,38 +531,38 @@ namespace D365MetadataService.Handlers
                         Name = patternNameProp?.GetValue(pattern),
                         Version = patternVersionProp?.GetValue(pattern)
                     };
-                    _logger.Debug("Pattern object details: {PatternInfo}", patternInfo);
+                    _logger.Debug("[CreateForm] Pattern object details: {PatternInfo}", patternInfo);
                 }
                 catch (Exception patternEx)
                 {
                     _logger.Warning(patternEx, "Could not get pattern object details");
                 }
 
-                _logger.Information("Attempting to apply pattern...");
+                _logger.Information("[CreateForm] Attempting to apply pattern...");
                 var result = applyPatternMethod.Invoke(null, new object[] { formDesign, pattern });
                 
-                _logger.Debug("ApplyPattern returned: {Result} (Type: {ResultType})", 
+                _logger.Debug("[CreateForm] ApplyPattern returned: {Result} (Type: {ResultType})", 
                     result, result?.GetType().FullName ?? "null");
 
                 var success = result != null && (bool)result;
 
                 if (success)
                 {
-                    _logger.Information("✅ Pattern applied successfully");
+                    _logger.Information("[CreateForm] Pattern applied successfully");
                     
                     // Set pattern properties on the design
                     await SetPatternPropertiesAsync(formDesign, patternName, patternVersion);
                 }
                 else
                 {
-                    _logger.Warning("❌ Pattern application returned false - checking why...");
+                    _logger.Warning("[CreateForm] Pattern application returned false - checking why...");
                     
                     // Additional debugging for failure
                     var postPatternProp = designType.GetProperty("Pattern");
                     if (postPatternProp != null)
                     {
                         var postPattern = postPatternProp.GetValue(formDesign);
-                        _logger.Warning("🔍 Design pattern after failed application: {PostPattern}", postPattern ?? "null");
+                        _logger.Warning("[CreateForm] Design pattern after failed application: {PostPattern}", postPattern ?? "null");
                     }
                 }
 
@@ -570,7 +570,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Exception applying pattern to design");
+                _logger.Error(ex, "[CreateForm] Exception applying pattern to design");
                 return false;
             }
         }
@@ -586,7 +586,7 @@ namespace D365MetadataService.Handlers
                 if (patternProperty != null && patternProperty.CanWrite)
                 {
                     patternProperty.SetValue(formDesign, patternName);
-                    _logger.Information("✅ Set Design.Pattern = {Pattern}", patternName);
+                    _logger.Information("[CreateForm] Set Design.Pattern = {Pattern}", patternName);
                 }
 
                 // Set PatternVersion property
@@ -594,14 +594,14 @@ namespace D365MetadataService.Handlers
                 if (patternVersionProperty != null && patternVersionProperty.CanWrite)
                 {
                     patternVersionProperty.SetValue(formDesign, patternVersion);
-                    _logger.Information("✅ Set Design.PatternVersion = {Version}", patternVersion);
+                    _logger.Information("[CreateForm] Set Design.PatternVersion = {Version}", patternVersion);
                 }
                 
                 return Task.CompletedTask;
             }
             catch (Exception ex)
             {
-                _logger.Warning(ex, "Failed to set pattern properties on design");
+                _logger.Warning(ex, "[CreateForm] Failed to set pattern properties on design");
                 return Task.CompletedTask;
             }
         }
@@ -613,7 +613,7 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                _logger.Information("🔍 STRUCTURE VALIDATION START");
+                _logger.Information("[CreateForm] STRUCTURE VALIDATION START");
                 
                 var designType = formDesign.GetType();
                 var controlsProperty = designType.GetProperty("Controls");
@@ -627,7 +627,7 @@ namespace D365MetadataService.Handlers
                         var countProperty = collectionType.GetProperty("Count");
                         var count = countProperty?.GetValue(controlsCollection);
                         
-                        _logger.Information("📊 Form Design has {Count} top-level controls", count);
+                        _logger.Information("[CreateForm] Form Design has {Count} top-level controls", count);
                         
                         // Try to enumerate the controls
                         if (controlsCollection is System.Collections.IEnumerable enumerable)
@@ -639,7 +639,7 @@ namespace D365MetadataService.Handlers
                                 var nameProperty = controlType.GetProperty("Name");
                                 var name = nameProperty?.GetValue(control)?.ToString() ?? "unnamed";
                                 
-                                _logger.Information("  [{Index}] {ControlType} - Name: '{Name}'", index, controlType.Name, name);
+                                _logger.Information("[CreateForm]   [{Index}] {ControlType} - Name: '{Name}'", index, controlType.Name, name);
                                 
                                 // Check if this control has child controls
                                 var childControlsProperty = controlType.GetProperty("Controls");
@@ -652,7 +652,7 @@ namespace D365MetadataService.Handlers
                                         var childCount = childCountProperty?.GetValue(childControls);
                                         if (childCount != null && (int)childCount > 0)
                                         {
-                                            _logger.Information("    └─ Has {ChildCount} child controls", childCount);
+                                            _logger.Information("[CreateForm]     -- Has {ChildCount} child controls", childCount);
                                         }
                                     }
                                 }
@@ -662,19 +662,19 @@ namespace D365MetadataService.Handlers
                     }
                     else
                     {
-                        _logger.Warning("⚠️ FormDesign.Controls is null");
+                        _logger.Warning("[CreateForm] FormDesign.Controls is null");
                     }
                 }
                 else
                 {
-                    _logger.Warning("⚠️ FormDesign does not have Controls property");
+                    _logger.Warning("[CreateForm] FormDesign does not have Controls property");
                 }
                 
-                _logger.Information("🔍 STRUCTURE VALIDATION END");
+                _logger.Information("[CreateForm] STRUCTURE VALIDATION END");
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to validate built structure");
+                _logger.Error(ex, "[CreateForm] Failed to validate built structure");
             }
         }
 
@@ -686,7 +686,7 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                _logger.Information("🏗️ Building structure from pattern definition recursively");
+                _logger.Information("[CreateForm] Building structure from pattern definition recursively");
 
                 // Extract root node from pattern
                 var patternType = pattern.GetType();
@@ -694,31 +694,31 @@ namespace D365MetadataService.Handlers
                 
                 if (rootProperty == null)
                 {
-                    _logger.Warning("Pattern does not have Root property - cannot build recursive structure");
+                    _logger.Warning("[CreateForm] Pattern does not have Root property - cannot build recursive structure");
                     return;
                 }
 
                 var rootNode = rootProperty.GetValue(pattern);
                 if (rootNode == null)
                 {
-                    _logger.Warning("Pattern Root is null - cannot build recursive structure");
+                    _logger.Warning("[CreateForm] Pattern Root is null - cannot build recursive structure");
                     return;
                 }
 
-                _logger.Information("✅ Pattern root node found: {RootNodeType}", rootNode.GetType().Name);
+                _logger.Information("[CreateForm] Pattern root node found: {RootNodeType}", rootNode.GetType().Name);
 
                 // Use the recursive building method directly with root node
                 await BuildFormStructureRecursively(formDesign, formDesign, rootNode, pattern.GetType().Name);
 
                 // VALIDATE what was actually created
-                _logger.Information("🔍 VALIDATION: Checking what was actually built in the form");
+                _logger.Information("[CreateForm] VALIDATION: Checking what was actually built in the form");
                 ValidateBuiltStructure(formDesign);
 
-                _logger.Information("✅ Recursive structure building from pattern completed");
+                _logger.Information("[CreateForm] Recursive structure building from pattern completed");
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to build structure from pattern");
+                _logger.Error(ex, "[CreateForm] Failed to build structure from pattern");
             }
         }
 
@@ -732,11 +732,11 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                _logger.Information("🏗️ Building form structure RECURSIVELY for pattern '{Pattern}'", patternName);
+                _logger.Information("[CreateForm] Building form structure RECURSIVELY for pattern '{Pattern}'", patternName);
 
                 if (rootNode == null)
                 {
-                    _logger.Warning("No RootNode available for recursive building");
+                    _logger.Warning("[CreateForm] No RootNode available for recursive building");
                     return;
                 }
 
@@ -745,25 +745,25 @@ namespace D365MetadataService.Handlers
                 var controlsProperty = designType.GetProperty("Controls");
                 if (controlsProperty == null)
                 {
-                    _logger.Error("FormDesign does not have Controls property");
+                    _logger.Error("[CreateForm] FormDesign does not have Controls property");
                     return;
                 }
 
                 var controlsCollection = controlsProperty.GetValue(formDesign);
                 if (controlsCollection == null)
                 {
-                    _logger.Error("FormDesign.Controls is null");
+                    _logger.Error("[CreateForm] FormDesign.Controls is null");
                     return;
                 }
 
                 // Start recursive building from the root node
                 await BuildPatternNodeRecursively(rootNode, formInstance, controlsCollection, 0);
 
-                _logger.Information("✅ Recursive form structure building completed");
+                _logger.Information("[CreateForm] Recursive form structure building completed");
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to build form structure recursively");
+                _logger.Error(ex, "[CreateForm] Failed to build form structure recursively");
                 throw;
             }
         }
@@ -781,30 +781,30 @@ namespace D365MetadataService.Handlers
 
                 var indent = new string(' ', depth * 2);
                 var nodeType = patternNode.GetType();
-                _logger.Information("{Indent}🔨 Building node: {NodeType}", indent, nodeType.Name);
+                _logger.Information("[CreateForm] {Indent}Building node: {NodeType}", indent, nodeType.Name);
 
                 // Extract node information
                 var nodeInfo = ExtractPatternNodeInfo(patternNode);
-                _logger.Information("{Indent}   Type: {Type}, RequireOne: {RequireOne}", indent, nodeInfo.Type, nodeInfo.RequireOne);
+                _logger.Information("[CreateForm] {Indent}   Type: {Type}, RequireOne: {RequireOne}", indent, nodeInfo.Type, nodeInfo.RequireOne);
 
                 // Create control based on node type
                 object createdControl = null;
                 if (!string.IsNullOrEmpty(nodeInfo.Type))
                 {
-                    _logger.Information("{Indent}🔍 About to create control - parentCollection type: {CollectionType}", indent, parentControlsCollection?.GetType().Name ?? "null");
+                    _logger.Information("[CreateForm] {Indent}About to create control - parentCollection type: {CollectionType}", indent, parentControlsCollection?.GetType().Name ?? "null");
                     createdControl = await CreateControlForNodeType(nodeInfo.Type, parentControlsCollection, formInstance, depth);
                     
                     if (createdControl != null)
                     {
-                        _logger.Information("{Indent}✅ Created control result: {ControlResult}", indent, createdControl.GetType().Name);
+                        _logger.Information("[CreateForm] {Indent}Created control result: {ControlResult}", indent, createdControl.GetType().Name);
                     }
                     else if (nodeInfo.Type.ToLowerInvariant() == "formdesign")
                     {
-                        _logger.Information("{Indent}✅ FormDesign node processed (no new control needed)", indent);
+                        _logger.Information("[CreateForm] {Indent}FormDesign node processed (no new control needed)", indent);
                     }
                     else
                     {
-                        _logger.Warning("{Indent}⚠️ Control creation failed for {NodeType}, but continuing with pattern building", indent, nodeInfo.Type);
+                        _logger.Warning("[CreateForm] {Indent}Control creation failed for {NodeType}, but continuing with pattern building", indent, nodeInfo.Type);
                     }
                 }
 
@@ -823,18 +823,18 @@ namespace D365MetadataService.Handlers
                 {
                     var childCollection = createdControl != null ? GetControlsCollection(createdControl) : parentControlsCollection;
                     
-                    _logger.Information("{Indent}   Processing {Count} child nodes", indent, nodeInfo.SubNodes.Count);
+                    _logger.Information("[CreateForm] {Indent}   Processing {Count} child nodes", indent, nodeInfo.SubNodes.Count);
                     foreach (var subNode in nodeInfo.SubNodes)
                     {
                         await BuildPatternNodeRecursively(subNode, formInstance, childCollection, depth + 1);
                     }
                 }
 
-                _logger.Information("{Indent}✅ Node building complete", indent);
+                _logger.Information("[CreateForm] {Indent}Node building complete", indent);
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to build pattern node at depth {Depth}", depth);
+                _logger.Error(ex, "[CreateForm] Failed to build pattern node at depth {Depth}", depth);
             }
         }
 
@@ -894,12 +894,12 @@ namespace D365MetadataService.Handlers
             try
             {
                 var indent = new string(' ', depth * 2);
-                _logger.Information("{Indent}🎛️ Creating control for type: {NodeType}", indent, nodeType);
+                _logger.Information("[CreateForm] {Indent}Creating control for type: {NodeType}", indent, nodeType);
                 
                 // FormDesign is special - it's the design itself, not a new control
                 if (nodeType.ToLowerInvariant() == "formdesign")
                 {
-                    _logger.Information("{Indent}📐 FormDesign node - applying properties to design itself", indent);
+                    _logger.Information("[CreateForm] {Indent}FormDesign node - applying properties to design itself", indent);
                     return Task.FromResult<object>(null);
                 }
                 
@@ -909,7 +909,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to create control for node type {NodeType}", nodeType);
+                _logger.Error(ex, "[CreateForm] Failed to create control for node type {NodeType}", nodeType);
                 return Task.FromResult<object>(null);
             }
         }
@@ -923,18 +923,18 @@ namespace D365MetadataService.Handlers
             try
             {
                 var indent = new string(' ', depth * 2);
-                _logger.Information("{Indent}🎯 Creating D365 form control for type: {ControlTypeName}", indent, controlTypeName);
+                _logger.Information("[CreateForm] {Indent}Creating D365 form control for type: {ControlTypeName}", indent, controlTypeName);
                 
                 // Create the actual D365 control using direct instantiation  
                 var controlInstance = _controlFactory.CreateControlByFormControlType(controlTypeName);
                 if (controlInstance == null)
                 {
-                    _logger.Warning("{Indent}⚠️ Control type '{ControlTypeName}' could not be created - this may be expected for some pattern types", indent, controlTypeName);
-                    _logger.Information("{Indent}ℹ️ Continuing pattern building without this control", indent);
+                    _logger.Warning("[CreateForm] {Indent}Control type '{ControlTypeName}' could not be created - this may be expected for some pattern types", indent, controlTypeName);
+                    _logger.Information("[CreateForm] {Indent}Continuing pattern building without this control", indent);
                     return null;
                 }
                 
-                _logger.Information("{Indent}✅ Created control instance: {ControlInstance}", indent, controlInstance.GetType().Name);
+                _logger.Information("[CreateForm] {Indent}Created control instance: {ControlInstance}", indent, controlInstance.GetType().Name);
                 
                 // Set a unique name for the control - first 2 characters of GUID
                 var uniqueName = $"{controlInstance.GetType().Name}_{Guid.NewGuid().ToString("N").Substring(0, 2)}";
@@ -950,7 +950,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Error creating D365 form control for {ControlTypeName}", controlTypeName);
+                _logger.Error(ex, "[CreateForm] Error creating D365 form control for {ControlTypeName}", controlTypeName);
                 return null;
             }
         }
@@ -966,12 +966,12 @@ namespace D365MetadataService.Handlers
                 
                 if (controlsCollection == null || control == null) 
                 {
-                    _logger.Warning("{Indent}Cannot add control - controlsCollection or control is null", indent);
+                    _logger.Warning("[CreateForm] {Indent}Cannot add control - controlsCollection or control is null", indent);
                     return;
                 }
 
                 var collectionType = controlsCollection.GetType();
-                _logger.Information("{Indent}🔍 Collection type: {CollectionType}", indent, collectionType.Name);
+                _logger.Information("[CreateForm] {Indent}Collection type: {CollectionType}", indent, collectionType.Name);
                 
                 // Try the Add method for KeyedObjectCollection<AxFormControl>
                 var addMethod = collectionType.GetMethod("Add", new[] { control.GetType() });
@@ -983,26 +983,26 @@ namespace D365MetadataService.Handlers
                 
                 if (addMethod != null)
                 {
-                    _logger.Information("{Indent}🎯 Using Add method for collection", indent);
+                    _logger.Information("[CreateForm] {Indent}Using Add method for collection", indent);
                     addMethod.Invoke(controlsCollection, new[] { control });
-                    _logger.Information("{Indent}✅ Added {ControlName} ({ControlType}) to collection", indent, controlName, control.GetType().Name);
+                    _logger.Information("[CreateForm] {Indent}Added {ControlName} ({ControlType}) to collection", indent, controlName, control.GetType().Name);
                     
                     // Check collection count after adding
                     var countProperty = collectionType.GetProperty("Count");
                     if (countProperty != null)
                     {
                         var count = countProperty.GetValue(controlsCollection);
-                        _logger.Information("{Indent}📊 Collection now has {Count} items", indent, count);
+                        _logger.Information("[CreateForm] {Indent}Collection now has {Count} items", indent, count);
                     }
                 }
                 else
                 {
-                    _logger.Error("{Indent}❌ No suitable Add method found for {ControlType}", indent, control.GetType().Name);
+                    _logger.Error("[CreateForm] {Indent}No suitable Add method found for {ControlType}", indent, control.GetType().Name);
                 }
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to add control {ControlName} to D365 collection", controlName);
+                _logger.Error(ex, "[CreateForm] Failed to add control {ControlName} to D365 collection", controlName);
             }
         }
 
@@ -1014,12 +1014,12 @@ namespace D365MetadataService.Handlers
             try
             {
                 var indent = new string(' ', depth * 2);
-                _logger.Information("{Indent}🎛️ Creating control for type: {ControlTypeName}", indent, controlTypeName);
+                _logger.Information("[CreateForm] {Indent}Creating control for type: {ControlTypeName}", indent, controlTypeName);
                 
                 // FormDesign is special - it's the design itself, not a new control
                 if (controlTypeName.ToLowerInvariant() == "formdesign")
                 {
-                    _logger.Information("{Indent}📐 FormDesign node - applying properties to design itself", indent);
+                    _logger.Information("[CreateForm] {Indent}FormDesign node - applying properties to design itself", indent);
                     return null;
                 }
                 
@@ -1028,7 +1028,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to create control for node type {NodeType}", controlTypeName);
+                _logger.Error(ex, "[CreateForm] Failed to create control for node type {NodeType}", controlTypeName);
                 return null;
             }
         }
@@ -1046,7 +1046,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to get controls collection from control");
+                _logger.Error(ex, "[CreateForm] Failed to get controls collection from control");
                 return null;
             }
         }
@@ -1070,7 +1070,7 @@ namespace D365MetadataService.Handlers
                     var propertyName = propertyProperty.GetValue(propertyRestriction)?.ToString();
                     var value = valueProperty.GetValue(propertyRestriction);
                     
-                    _logger.Information("{Indent}🎯 Applying property: {Property} = {Value}", indent, propertyName, value);
+                    _logger.Information("[CreateForm] {Indent}Applying property: {Property} = {Value}", indent, propertyName, value);
                     
                     if (!string.IsNullOrEmpty(propertyName) && targetControl != null)
                     {
@@ -1091,11 +1091,11 @@ namespace D365MetadataService.Handlers
                                 {
                                     property.SetValue(targetControl, value);
                                 }
-                                _logger.Information("{Indent}✅ Set {Control}.{Property} = {Value}", indent, targetControl.GetType().Name, propertyName, value);
+                                _logger.Information("[CreateForm] {Indent}Set {Control}.{Property} = {Value}", indent, targetControl.GetType().Name, propertyName, value);
                             }
                             else
                             {
-                                _logger.Warning("{Indent}Property {Property} not found on {Control}", indent, propertyName, targetControl.GetType().Name);
+                                _logger.Warning("[CreateForm] {Indent}Property {Property} not found on {Control}", indent, propertyName, targetControl.GetType().Name);
                             }
                         }
                         catch (Exception propEx)
@@ -1107,7 +1107,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to apply property restriction");
+                _logger.Error(ex, "[CreateForm] Failed to apply property restriction");
             }
         }
 
@@ -1118,15 +1118,15 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                _logger.Information("🔍 PATTERN STRUCTURE INSPECTION START");
+                _logger.Information("[CreateForm] PATTERN STRUCTURE INSPECTION START");
                 var patternType = pattern.GetType();
-                _logger.Information("Pattern type: {PatternType}", patternType.FullName);
+                _logger.Information("[CreateForm] Pattern type: {PatternType}", patternType.FullName);
                 
                 // Look for properties that contain the pattern structure
                 var properties = patternType.GetProperties();
                 foreach (var prop in properties)
                 {
-                    _logger.Information("Pattern property: {PropertyName} ({PropertyType})", prop.Name, prop.PropertyType.Name);
+                    _logger.Information("[CreateForm] Pattern property: {PropertyName} ({PropertyType})", prop.Name, prop.PropertyType.Name);
                     
                     if (prop.Name.Contains("Root") || prop.Name.Contains("Node") || prop.Name.Contains("Structure"))
                     {
@@ -1135,22 +1135,22 @@ namespace D365MetadataService.Handlers
                             var value = prop.GetValue(pattern);
                             if (value != null)
                             {
-                                _logger.Information("🎯 Examining pattern property: {PropertyName}", prop.Name);
+                                _logger.Information("[CreateForm] Examining pattern property: {PropertyName}", prop.Name);
                                 InspectPatternNode(value, 0);
                             }
                         }
                         catch (Exception ex)
                         {
-                            _logger.Warning(ex, "Failed to inspect pattern property {PropertyName}", prop.Name);
+                            _logger.Warning(ex, "[CreateForm] Failed to inspect pattern property {PropertyName}", prop.Name);
                         }
                     }
                 }
                 
-                _logger.Information("🔍 PATTERN STRUCTURE INSPECTION END");
+                _logger.Information("[CreateForm] PATTERN STRUCTURE INSPECTION END");
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to inspect pattern structure");
+                _logger.Error(ex, "[CreateForm] Failed to inspect pattern structure");
             }
         }
 
@@ -1176,13 +1176,13 @@ namespace D365MetadataService.Handlers
                         var typeValue = typeProp.GetValue(node)?.ToString();
                         if (!string.IsNullOrEmpty(typeValue))
                         {
-                            _logger.Information("{Indent}Pattern Node: {NodeType} -> Type: {PatternType}", 
+                            _logger.Information("[CreateForm] {Indent}Pattern Node: {NodeType} -> Type: {PatternType}", 
                                 indent, nodeType.Name, typeValue);
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.Debug(ex, "{Indent}Failed to get Type property", indent);
+                        _logger.Debug(ex, "[CreateForm] {Indent}Failed to get Type property", indent);
                     }
                 }
                 
@@ -1216,14 +1216,14 @@ namespace D365MetadataService.Handlers
                         }
                         catch (Exception ex)
                         {
-                            _logger.Debug(ex, "{Indent}Failed to inspect child property {PropertyName}", indent, prop.Name);
+                            _logger.Debug(ex, "[CreateForm] {Indent}Failed to inspect child property {PropertyName}", indent, prop.Name);
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to inspect pattern node at depth {Depth}", depth);
+                _logger.Error(ex, "[CreateForm] Failed to inspect pattern node at depth {Depth}", depth);
             }
         }
 
@@ -1262,7 +1262,7 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                _logger.Information("🗄️ Adding {Count} datasource(s) to form", dataSourceNames.Length);
+                _logger.Information("[CreateForm] Adding {Count} datasource(s) to form", dataSourceNames.Length);
                 
                 int addedCount = 0;
                 
@@ -1270,11 +1270,11 @@ namespace D365MetadataService.Handlers
                 {
                     if (string.IsNullOrWhiteSpace(dataSourceName))
                     {
-                        _logger.Warning("Skipping empty datasource name");
+                        _logger.Warning("[CreateForm] Skipping empty datasource name");
                         continue;
                     }
                     
-                    _logger.Information("📊 Creating datasource: {DataSourceName}", dataSourceName);
+                    _logger.Information("[CreateForm] Creating datasource: {DataSourceName}", dataSourceName);
                     
                     try
                     {
@@ -1284,7 +1284,7 @@ namespace D365MetadataService.Handlers
                         // Set datasource properties
                         var dataSourceType = dataSource.GetType();
                         
-                        _logger.Information("🔍 Available datasource properties: {Properties}", 
+                        _logger.Information("[CreateForm] Available datasource properties: {Properties}", 
                             string.Join(", ", dataSourceType.GetProperties().Select(p => p.Name)));
                         
                         // Set Name property (this is the datasource name in the form)
@@ -1292,7 +1292,7 @@ namespace D365MetadataService.Handlers
                         if (nameProperty != null && nameProperty.CanWrite)
                         {
                             nameProperty.SetValue(dataSource, dataSourceName);
-                            _logger.Information("✅ Set datasource Name = {DataSourceName}", dataSourceName);
+                            _logger.Information("[CreateForm] Set datasource Name = {DataSourceName}", dataSourceName);
                         }
                         
                         // Set Table property (this should be the table name that the datasource references)
@@ -1300,7 +1300,7 @@ namespace D365MetadataService.Handlers
                         if (tableProperty != null && tableProperty.CanWrite)
                         {
                             tableProperty.SetValue(dataSource, dataSourceName);
-                            _logger.Information("✅ Set datasource Table = {DataSourceName}", dataSourceName);
+                            _logger.Information("[CreateForm] Set datasource Table = {DataSourceName}", dataSourceName);
                         }
                         
                         // Check for other critical properties that might be required
@@ -1308,7 +1308,7 @@ namespace D365MetadataService.Handlers
                         if (metadataProperty != null)
                         {
                             var metadataValue = metadataProperty.GetValue(dataSource);
-                            _logger.Information("🔍 Datasource Metadata property value: {MetadataValue}", metadataValue?.ToString() ?? "null");
+                            _logger.Information("[CreateForm] Datasource Metadata property value: {MetadataValue}", metadataValue?.ToString() ?? "null");
                         }
                         
                         // Check for ID property
@@ -1317,7 +1317,7 @@ namespace D365MetadataService.Handlers
                         {
                             // Set a unique ID for the datasource
                             idProperty.SetValue(dataSource, addedCount + 1);
-                            _logger.Information("✅ Set datasource Id = {Id}", addedCount + 1);
+                            _logger.Information("[CreateForm] Set datasource Id = {Id}", addedCount + 1);
                         }
                         
                         // Add the datasource to the form using AddDataSource method
@@ -1328,11 +1328,11 @@ namespace D365MetadataService.Handlers
                         {
                             addDataSourceMethod.Invoke(formInstance, new[] { dataSource });
                             addedCount++;
-                            _logger.Information("✅ Added datasource {DataSourceName} to form", dataSourceName);
+                            _logger.Information("[CreateForm] Added datasource {DataSourceName} to form", dataSourceName);
                         }
                         else
                         {
-                            _logger.Error("❌ AddDataSource method not found on form type {FormType}", formType.Name);
+                            _logger.Error("[CreateForm] AddDataSource method not found on form type {FormType}", formType.Name);
                         }
                     }
                     catch (Exception dsEx)
@@ -1341,12 +1341,12 @@ namespace D365MetadataService.Handlers
                     }
                 }
                 
-                _logger.Information("🎯 Successfully added {AddedCount} of {TotalCount} datasources", addedCount, dataSourceNames.Length);
+                _logger.Information("[CreateForm] Successfully added {AddedCount} of {TotalCount} datasources", addedCount, dataSourceNames.Length);
                 return Task.FromResult(addedCount);
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Exception adding datasources to form");
+                _logger.Error(ex, "[CreateForm] Exception adding datasources to form");
                 return Task.FromResult(0);
             }
         }
@@ -1375,13 +1375,13 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                _logger.Information("🎛️ Adding field controls from {Count} datasource(s)", dataSourceNames.Length);
+                _logger.Information("[CreateForm] Adding field controls from {Count} datasource(s)", dataSourceNames.Length);
 
                 // Get form design to add controls to
                 var formDesign = GetOrCreateFormDesign(formInstance);
                 if (formDesign == null)
                 {
-                    _logger.Error("Cannot add field controls - no form design available");
+                    _logger.Error("[CreateForm] Cannot add field controls - no form design available");
                     return;
                 }
 
@@ -1391,11 +1391,11 @@ namespace D365MetadataService.Handlers
                     await AddBasicFieldControlsForDataSourceAsync(formDesign, dsName);
                 }
 
-                _logger.Information("✅ Field controls added successfully");
+                _logger.Information("[CreateForm] Field controls added successfully");
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to add field controls from datasources");
+                _logger.Error(ex, "[CreateForm] Failed to add field controls from datasources");
             }
         }
 
@@ -1406,7 +1406,7 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                _logger.Information("🔧 Adding field controls for datasource '{DataSource}'", dataSourceName);
+                _logger.Information("[CreateForm] Adding field controls for datasource '{DataSource}'", dataSourceName);
 
                 // Create basic field controls that most tables have
                 var basicFields = new[]
@@ -1463,12 +1463,12 @@ namespace D365MetadataService.Handlers
 
                                         // Add control to design
                                         addMethod.Invoke(controls, new[] { control });
-                                        _logger.Information("✅ Added {ControlType} control '{Name}' for field '{DataField}'", 
+                                        _logger.Information("[CreateForm] Added {ControlType} control '{Name}' for field '{DataField}'", 
                                             fieldInfo.Type, fieldInfo.Name, fieldInfo.DataField);
                                     }
                                     else
                                     {
-                                        _logger.Warning("⚠️ Control type '{ControlType}' not found", controlTypeName);
+                                        _logger.Warning("[CreateForm] Control type '{ControlType}' not found", controlTypeName);
                                     }
                                 }
                                 catch (Exception fieldEx)
@@ -1479,20 +1479,20 @@ namespace D365MetadataService.Handlers
                         }
                         else
                         {
-                            _logger.Error("Add method not found on controls collection");
+                            _logger.Error("[CreateForm] Add method not found on controls collection");
                         }
                     }
                 }
                 else
                 {
-                    _logger.Error("Controls property not found on form design");
+                    _logger.Error("[CreateForm] Controls property not found on form design");
                 }
 
                 return Task.CompletedTask;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to add basic field controls for datasource '{DataSource}'", dataSourceName);
+                _logger.Error(ex, "[CreateForm] Failed to add basic field controls for datasource '{DataSource}'", dataSourceName);
                 return Task.CompletedTask;
             }
         }

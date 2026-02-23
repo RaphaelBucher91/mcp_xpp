@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -30,7 +30,7 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                // 🚀 REFACTORED: Use centralized reflection manager instead of scattered logic
+                // REFACTORED: Use centralized reflection manager instead of scattered logic
                 var availableTypes = _reflectionManager.GetSupportedObjectTypes();
 
                 return Task.FromResult(ServiceResponse.CreateSuccess(new
@@ -42,7 +42,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Failed to get available object types");
+                Logger.Error(ex, "[AvailableTypes] Failed to get available object types");
                 return Task.FromResult(ServiceResponse.CreateError(
                     $"Failed to get available object types: {ex.Message}"));
             }

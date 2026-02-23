@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -37,12 +37,12 @@ namespace D365MetadataService.Services
 
             try
             {
-                _logger.Information("Starting parameter discovery for object type: {ObjectType}", objectType);
+                _logger.Information("[ParamDiscovery] Starting parameter discovery for object type: {ObjectType}", objectType);
 
                 // Check cache first
                 if (_schemaCache.TryGetValue(objectType, out var cachedSchema))
                 {
-                    _logger.Debug("Using cached schema for {ObjectType}", objectType);
+                    _logger.Debug("[ParamDiscovery] Using cached schema for {ObjectType}", objectType);
                     result.Success = true;
                     result.Schema = cachedSchema;
                     result.DiscoveryTime = stopwatch.Elapsed;
@@ -55,7 +55,7 @@ namespace D365MetadataService.Services
                 if (type == null)
                 {
                     result.ErrorMessage = $"Object type '{objectType}' not found in loaded assemblies";
-                    _logger.Warning("Object type not found: {ObjectType}", objectType);
+                    _logger.Warning("[ParamDiscovery] Object type not found: {ObjectType}", objectType);
                     return result;
                 }
 
@@ -72,13 +72,13 @@ namespace D365MetadataService.Services
                 result.Schema = schema;
                 result.ParametersAnalyzed = schema.ParameterCount;
 
-                _logger.Information("Parameter discovery completed for {ObjectType}. Found {ParameterCount} parameters", 
+                _logger.Information("[ParamDiscovery] Parameter discovery completed for {ObjectType}. Found {ParameterCount} parameters", 
                     objectType, schema.ParameterCount);
             }
             catch (Exception ex)
             {
                 result.ErrorMessage = $"Error during parameter discovery: {ex.Message}";
-                _logger.Error(ex, "Error discovering parameters for {ObjectType}", objectType);
+                _logger.Error(ex, "[ParamDiscovery] Error discovering parameters for {ObjectType}", objectType);
             }
             finally
             {
@@ -233,7 +233,7 @@ namespace D365MetadataService.Services
             }
             catch (Exception ex)
             {
-                _logger.Debug(ex, "Could not get description for property {PropertyName}", property.Name);
+                _logger.Debug(ex, "[ParamDiscovery] Could not get description for property {PropertyName}", property.Name);
             }
 
             // Fallback to basic descriptions for common parameters

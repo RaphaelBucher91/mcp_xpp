@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -82,25 +82,25 @@ namespace D365MetadataService.Services
 
                 try
                 {
-                    _logger.Information("🔍 Discovering D365 metadata assembly...");
+                    _logger.Information("[ReflectionManager] Discovering D365 metadata assembly...");
                     
                     // Strategy 1: Force assembly loading via known type
                     try
                     {
                         var knownType = typeof(AxTable);
                         _d365MetadataAssembly = knownType.Assembly;
-                        _logger.Information("✅ Found D365 assembly via typeof(AxTable): {Assembly}", 
+                        _logger.Information("[ReflectionManager] Found D365 assembly via typeof(AxTable): {Assembly}", 
                             _d365MetadataAssembly.FullName);
                         return _d365MetadataAssembly;
                     }
                     catch (Exception ex)
                     {
-                        _logger.Warning(ex, "⚠️ typeof(AxTable) approach failed, trying discovery...");
+                        _logger.Warning(ex, "[ReflectionManager] typeof(AxTable) approach failed, trying discovery...");
                     }
 
                     // Strategy 2: Dynamic discovery through loaded assemblies
                     var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-                    _logger.Debug("🔍 Searching {Count} loaded assemblies", assemblies.Length);
+                    _logger.Debug("[ReflectionManager] Searching {Count} loaded assemblies", assemblies.Length);
 
                     foreach (var assembly in assemblies)
                     {
@@ -115,14 +115,14 @@ namespace D365MetadataService.Services
                             if (metaModelTypes.Length > 0)
                             {
                                 _d365MetadataAssembly = assembly;
-                                _logger.Information("✅ Found D365 assembly via discovery: {Assembly} with {TypeCount} types", 
+                                _logger.Information("[ReflectionManager] Found D365 assembly via discovery: {Assembly} with {TypeCount} types", 
                                     assembly.FullName, metaModelTypes.Length);
                                 return _d365MetadataAssembly;
                             }
                         }
                         catch (ReflectionTypeLoadException ex)
                         {
-                            _logger.Debug("Skipping assembly {Name}: {Error}", 
+                            _logger.Debug("[ReflectionManager] Skipping assembly {Name}: {Error}", 
                                 assembly.GetName().Name, ex.Message);
                         }
                     }
@@ -131,19 +131,19 @@ namespace D365MetadataService.Services
                     try
                     {
                         _d365MetadataAssembly = Assembly.Load("Microsoft.Dynamics.AX.Metadata");
-                        _logger.Information("✅ Loaded D365 assembly by name");
+                        _logger.Information("[ReflectionManager] Loaded D365 assembly by name");
                         return _d365MetadataAssembly;
                     }
                     catch (Exception ex)
                     {
-                        _logger.Error(ex, "❌ Failed to load D365 assembly by name");
+                        _logger.Error(ex, "[ReflectionManager] Failed to load D365 assembly by name");
                     }
 
-                    throw new InvalidOperationException("❌ Could not discover D365 metadata assembly using any strategy");
+                    throw new InvalidOperationException("Could not discover D365 metadata assembly using any strategy");
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error(ex, "❌ Critical error in D365 assembly discovery");
+                    _logger.Error(ex, "[ReflectionManager] Critical error in D365 assembly discovery");
                     throw;
                 }
             }
@@ -175,13 +175,13 @@ namespace D365MetadataService.Services
                     .OrderBy(name => name)
                     .ToArray();
 
-                _logger.Information("🎯 Discovered {Count} supported D365 object types", axTypes.Length);
+                _logger.Information("[ReflectionManager] Discovered {Count} supported D365 object types", axTypes.Length);
                 
                 return axTypes;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "❌ Error discovering supported object types");
+                _logger.Error(ex, "[ReflectionManager] Error discovering supported object types");
                 return Array.Empty<string>();
             }
         }
@@ -231,14 +231,14 @@ namespace D365MetadataService.Services
                     
                     if (type == null)
                     {
-                        _logger.Warning("⚠️ Type not found: {TypeName}", name);
+                        _logger.Warning("[ReflectionManager] Type not found: {TypeName}", name);
                     }
                     
                     return type;
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error(ex, "❌ Error retrieving type: {TypeName}", name);
+                    _logger.Error(ex, "[ReflectionManager] Error retrieving type: {TypeName}", name);
                     return null;
                 }
             });
@@ -269,13 +269,13 @@ namespace D365MetadataService.Services
                     .OrderBy(m => m.Name)
                     .ToArray();
 
-                _logger.Debug("🔧 Found {Count} modification methods for {Type}", methods.Length, typeName);
+                _logger.Debug("[ReflectionManager] Found {Count} modification methods for {Type}", methods.Length, typeName);
                 
                 return methods;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "❌ Error discovering modification methods for {Type}", typeName);
+                _logger.Error(ex, "[ReflectionManager] Error discovering modification methods for {Type}", typeName);
                 return Array.Empty<MethodInfo>();
             }
         }
@@ -338,13 +338,13 @@ namespace D365MetadataService.Services
                     .OrderBy(p => p.Name)
                     .ToArray();
 
-                _logger.Debug("📝 Found {Count} writable properties for {Type}", properties.Length, typeName);
+                _logger.Debug("[ReflectionManager] Found {Count} writable properties for {Type}", properties.Length, typeName);
                 
                 return properties;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "❌ Error discovering writable properties for {Type}", typeName);
+                _logger.Error(ex, "[ReflectionManager] Error discovering writable properties for {Type}", typeName);
                 return Array.Empty<PropertyInfo>();
             }
         }
@@ -378,24 +378,24 @@ namespace D365MetadataService.Services
 
                 try
                 {
-                    _logger.Information("🚀 Initializing D365 Reflection Manager...");
+                    _logger.Information("[ReflectionManager] Initializing D365 Reflection Manager...");
                     
                     // Force assembly loading
                     var assembly = GetD365MetadataAssembly();
                     
                     // Pre-populate type cache
                     var supportedTypes = GetSupportedObjectTypes();
-                    _logger.Information("✅ Pre-cached {Count} D365 object types", supportedTypes.Length);
+                    _logger.Information("[ReflectionManager] Pre-cached {Count} D365 object types", supportedTypes.Length);
                     
                     // Load property descriptions from Microsoft assemblies
                     LoadPropertyDescriptions();
                     
                     _isInitialized = true;
-                    _logger.Information("🎯 D365 Reflection Manager initialized successfully");
+                    _logger.Information("[ReflectionManager] D365 Reflection Manager initialized successfully");
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error(ex, "❌ Failed to initialize D365 Reflection Manager");
+                    _logger.Error(ex, "[ReflectionManager] Failed to initialize D365 Reflection Manager");
                     throw;
                 }
             }
@@ -435,14 +435,14 @@ namespace D365MetadataService.Services
 
                 try
                 {
-                    _logger.Information("🏭 Initializing shared D365ObjectFactory instance...");
+                    _logger.Information("[ReflectionManager] Initializing shared D365ObjectFactory instance...");
                     _objectFactory = new D365ObjectFactory(config, _logger);
-                    _logger.Information("✅ D365ObjectFactory initialized and cached in ReflectionManager");
+                    _logger.Information("[ReflectionManager] D365ObjectFactory initialized and cached in ReflectionManager");
                     return _objectFactory;
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error(ex, "❌ Failed to initialize D365ObjectFactory");
+                    _logger.Error(ex, "[ReflectionManager] Failed to initialize D365ObjectFactory");
                     throw;
                 }
             }
@@ -466,19 +466,19 @@ namespace D365MetadataService.Services
 
             return _propertyCache.GetOrAdd(cacheKey, _ =>
             {
-                _logger.Debug("🔍 Discovering collection properties for provider type: {ProviderType}", providerType.Name);
+                _logger.Debug("[ReflectionManager] Discovering collection properties for provider type: {ProviderType}", providerType.Name);
 
                 // DEBUG: First, let's see what properties exist
                 var allProperties = providerType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-                _logger.Debug("🔍 Found {Count} total properties on provider", allProperties.Length);
+                _logger.Debug("[ReflectionManager] Found {Count} total properties on provider", allProperties.Length);
                 
                 foreach (var prop in allProperties.Take(10)) // Log first 10 for debugging
                 {
-                    _logger.Debug("   🔍 Property: {PropertyName} ({PropertyType})", prop.Name, prop.PropertyType.Name);
+                    _logger.Debug("[ReflectionManager]    Property: {PropertyName} ({PropertyType})", prop.Name, prop.PropertyType.Name);
                     
                     // Check if this property has ListObjectsForModel method
                     var hasListMethod = prop.PropertyType.GetMethod("ListObjectsForModel") != null;
-                    _logger.Debug("      Has ListObjectsForModel: {HasMethod}, CanRead: {CanRead}", hasListMethod, prop.CanRead);
+                    _logger.Debug("[ReflectionManager]       Has ListObjectsForModel: {HasMethod}, CanRead: {CanRead}", hasListMethod, prop.CanRead);
                 }
 
                 var properties = providerType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -489,7 +489,7 @@ namespace D365MetadataService.Services
                     .OrderBy(prop => prop.Name)
                     .ToArray();
 
-                _logger.Information("📊 Cached {Count} collection properties for {ProviderType}", 
+                _logger.Information("[ReflectionManager] Cached {Count} collection properties for {ProviderType}", 
                     properties.Length, providerType.Name);
 
                 return properties;
@@ -506,14 +506,14 @@ namespace D365MetadataService.Services
 
             if (provider == null || string.IsNullOrEmpty(modelName))
             {
-                _logger.Warning("⚠️ Invalid parameters: provider={Provider}, model={Model}", 
+                _logger.Warning("[ReflectionManager] Invalid parameters: provider={Provider}, model={Model}", 
                     provider?.GetType().Name ?? "null", modelName ?? "null");
                 return objects;
             }
 
             try
             {
-                _logger.Information("🔍 Processing model: {Model} using WORKING approach", modelName);
+                _logger.Information("[ReflectionManager] Processing model: {Model} using WORKING approach", modelName);
                 
                 // Use the WORKING approach from ModelsHandler - direct property access
                 try { var result = provider.Tables.ListObjectsForModel(modelName); if (result?.Any() == true) objects["Tables"] = result; } catch { }
@@ -530,14 +530,14 @@ namespace D365MetadataService.Services
                 try { var result = provider.LabelFiles.ListObjectsForModel(modelName); if (result?.Any() == true) objects["LabelFiles"] = result; } catch { }
                 
                 var totalObjects = objects.Values.OfType<System.Collections.IEnumerable>().Sum(collection => collection.Cast<object>().Count());
-                _logger.Information("🎯 Found {TotalObjects} total objects across {Collections} collections for model {Model}", 
+                _logger.Information("[ReflectionManager] Found {TotalObjects} total objects across {Collections} collections for model {Model}", 
                     totalObjects, objects.Count, modelName);
 
                 return objects;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "❌ Error during object enumeration for model {Model}", modelName);
+                _logger.Error(ex, "[ReflectionManager] Error during object enumeration for model {Model}", modelName);
                 return objects;
             }
         }
@@ -553,7 +553,7 @@ namespace D365MetadataService.Services
                 var type = GetD365Type(objectTypeName);
                 if (type == null)
                 {
-                    _logger.Warning("⚠️ Type not found: {TypeName}", objectTypeName);
+                    _logger.Warning("[ReflectionManager] Type not found: {TypeName}", objectTypeName);
                     return new ObjectCapabilities
                     {
                         ObjectType = objectTypeName,
@@ -625,14 +625,14 @@ namespace D365MetadataService.Services
                     BaseTypeName = type.BaseType?.Name
                 };
 
-                _logger.Debug("📋 Discovered capabilities for {TypeName}: {MethodCount} methods, {PropertyCount} properties", 
+                _logger.Debug("[ReflectionManager] Discovered capabilities for {TypeName}: {MethodCount} methods, {PropertyCount} properties", 
                     objectTypeName, capabilities.ModificationMethods.Count, capabilities.WritableProperties.Count);
 
                 return capabilities;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "❌ Error discovering capabilities for {TypeName}", objectTypeName);
+                _logger.Error(ex, "[ReflectionManager] Error discovering capabilities for {TypeName}", objectTypeName);
                 return new ObjectCapabilities
                 {
                     ObjectType = objectTypeName,
@@ -997,7 +997,7 @@ namespace D365MetadataService.Services
 
             try
             {
-                _logger.Information("🔍 Discovering ALL properties for {ObjectType} using inheritance-based approach", objectTypeName);
+                _logger.Information("[ReflectionManager] Discovering ALL properties for {ObjectType} using inheritance-based approach", objectTypeName);
                 
                 // Get all properties using the enhanced inheritance-based algorithm
                 var allProperties = DiscoverAllPropertiesFromInheritanceChain(objectTypeName);
@@ -1058,14 +1058,14 @@ namespace D365MetadataService.Services
                 result.Success = true;
                 result.TotalProperties = result.Properties.Count;
                 
-                _logger.Information("✅ Successfully discovered {Count} properties for {ObjectType}", 
+                _logger.Information("[ReflectionManager] Successfully discovered {Count} properties for {ObjectType}", 
                     result.Properties.Count, objectTypeName);
 
                 return result;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "❌ Error discovering properties for {ObjectType}", objectTypeName);
+                _logger.Error(ex, "[ReflectionManager] Error discovering properties for {ObjectType}", objectTypeName);
                 result.Error = $"Error discovering properties: {ex.Message}";
                 return result;
             }
@@ -1110,14 +1110,14 @@ namespace D365MetadataService.Services
                     }
                 }
 
-                _logger.Debug("🎯 Found {Count} unique properties from inheritance chain for {ObjectType}", 
+                _logger.Debug("[ReflectionManager] Found {Count} unique properties from inheritance chain for {ObjectType}", 
                     allProperties.Count, objectTypeName);
 
                 return allProperties.ToArray();
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "❌ Error in inheritance-based property discovery for {ObjectType}", objectTypeName);
+                _logger.Error(ex, "[ReflectionManager] Error in inheritance-based property discovery for {ObjectType}", objectTypeName);
                 return Array.Empty<PropertyInfo>();
             }
         }
@@ -1170,7 +1170,7 @@ namespace D365MetadataService.Services
         {
             try
             {
-                _logger.Information("Loading property descriptions from Microsoft assemblies...");
+                _logger.Information("[ReflectionManager] Loading property descriptions from Microsoft assemblies...");
                 
                 // Get the MetaModel assembly that contains property descriptions
                 var metaModelAssembly = GetMetaModelAssembly();
@@ -1180,7 +1180,7 @@ namespace D365MetadataService.Services
                     .Where(name => name.EndsWith("DomainModelResx.resources"))
                     .ToArray();
                 
-                _logger.Information("Found {Count} domain model resource files", resourceNames.Length);
+                _logger.Information("[ReflectionManager] Found {Count} domain model resource files", resourceNames.Length);
                 
                 int totalDescriptions = 0;
                 
@@ -1209,23 +1209,23 @@ namespace D365MetadataService.Services
                         }
                         
                         totalDescriptions += resourceCount;
-                        _logger.Debug("Loaded {Count} descriptions from {ResourceName}", resourceCount, resourceName);
+                        _logger.Debug("[ReflectionManager] Loaded {Count} descriptions from {ResourceName}", resourceCount, resourceName);
                     }
                     catch (Exception ex)
                     {
-                        _logger.Warning(ex, "Failed to load resource {ResourceName}", resourceName);
+                        _logger.Warning(ex, "[ReflectionManager] Failed to load resource {ResourceName}", resourceName);
                     }
                 }
                 
                 // Build MetaModel mappings
                 BuildMetaModelMappings();
                 
-                _logger.Information("✅ Loaded {Count} property descriptions with {MappingCount} type mappings", 
+                _logger.Information("[ReflectionManager] Loaded {Count} property descriptions with {MappingCount} type mappings", 
                     totalDescriptions, _metaModelMappings.Count);
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to load property descriptions");
+                _logger.Error(ex, "[ReflectionManager] Failed to load property descriptions");
             }
         }
 
@@ -1253,7 +1253,7 @@ namespace D365MetadataService.Services
                 }
                 
                 _metaModelAssembly = Assembly.LoadFrom(metaModelPath);
-                _logger.Information("Loaded MetaModel assembly: {AssemblyName}", _metaModelAssembly.FullName);
+                _logger.Information("[ReflectionManager] Loaded MetaModel assembly: {AssemblyName}", _metaModelAssembly.FullName);
                 
                 return _metaModelAssembly;
             }
@@ -1299,7 +1299,7 @@ namespace D365MetadataService.Services
                 _metaModelMappings.TryAdd(mapping.Key, mapping.Value);
             }
             
-            _logger.Information("Built {Count} MetaModel type mappings", _metaModelMappings.Count);
+            _logger.Information("[ReflectionManager] Built {Count} MetaModel type mappings", _metaModelMappings.Count);
         }
 
         /// <summary>
@@ -1332,7 +1332,7 @@ namespace D365MetadataService.Services
             _supportedTypesCache.Clear();
             _propertyDescriptions.Clear();
             _metaModelMappings.Clear();
-            _logger.Information("🧹 Cleared all reflection caches");
+            _logger.Information("[ReflectionManager] Cleared all reflection caches");
         }
 
         #endregion

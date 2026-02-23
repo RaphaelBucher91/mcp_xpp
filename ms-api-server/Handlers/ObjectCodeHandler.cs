@@ -1,4 +1,4 @@
-using D365MetadataService.Models;
+﻿using D365MetadataService.Models;
 using D365MetadataService.Services;
 using Serilog;
 using System;
@@ -30,7 +30,7 @@ namespace D365MetadataService.Handlers
             if (validationError != null)
                 return validationError;
 
-            Logger.Information("Handling Object Code request: {@Request}", new { request.Action, request.Id });
+            Logger.Information("[ObjectCode] Handling Object Code request: {@Request}", new { request.Action, request.Id });
 
             try
             {
@@ -64,7 +64,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error extracting code from D365 object");
+                Logger.Error(ex, "[ObjectCode] Error extracting code from D365 object");
                 return ServiceResponse.CreateError($"Failed to extract code: {ex.Message}");
             }
         }

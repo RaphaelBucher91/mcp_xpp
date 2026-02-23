@@ -1,4 +1,4 @@
-using D365MetadataService.Models;
+﻿using D365MetadataService.Models;
 using D365MetadataService.Services;
 using Serilog;
 using System;
@@ -34,12 +34,12 @@ namespace D365MetadataService.Handlers
                 var supportedTypes = _reflectionManager.GetSupportedObjectTypes();
                 var limitedTypes = supportedTypes.Take(50).ToArray(); // Limit to top 50 for health check
                 
-                Logger.Debug("Found {Count} supported object types via centralized manager", limitedTypes.Length);
+                Logger.Debug("[HealthCheck] Found {Count} supported object types via centralized manager", limitedTypes.Length);
                 return limitedTypes;
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error getting supported object types from reflection manager");
+                Logger.Error(ex, "[HealthCheck] Error getting supported object types from reflection manager");
                 return new string[0];
             }
         }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipes;
@@ -42,7 +42,7 @@ namespace D365MetadataService.Services
         {
             if (_isRunning)
             {
-                _logger.Warning("Named Pipe Server is already running");
+                _logger.Warning("[PipeServer] Named Pipe Server is already running");
                 return Task.CompletedTask;
             }
 
@@ -50,8 +50,8 @@ namespace D365MetadataService.Services
             {
                 _isRunning = true;
 
-                _logger.Information("D365 Metadata Service starting on Named Pipe: {PipeName}", _pipeName);
-                _logger.Information("Service Configuration: {@Config}", new { 
+                _logger.Information("[PipeServer] D365 Metadata Service starting on Named Pipe: {PipeName}", _pipeName);
+                _logger.Information("[PipeServer] Service Configuration: {@Config}", new { 
                     PipeName = _pipeName,
                     MaxConnections = _maxConnections
                 });
@@ -59,12 +59,12 @@ namespace D365MetadataService.Services
                 // Start accepting connections using the Microsoft pattern (multiple pipe instances)
                 _ = AcceptConnectionsAsync(_cancellationTokenSource.Token);
 
-                _logger.Information("Named Pipe Server is ready to accept connections");
+                _logger.Information("[PipeServer] Named Pipe Server is ready to accept connections");
                 return Task.CompletedTask;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to start Named Pipe Server");
+                _logger.Error(ex, "[PipeServer] Failed to start Named Pipe Server");
                 throw;
             }
         }
@@ -74,7 +74,7 @@ namespace D365MetadataService.Services
             if (!_isRunning)
                 return;
 
-            _logger.Information("Stopping Named Pipe Server - signaling {ThreadCount} server threads to stop...", _activePipeHandlers.Count);
+            _logger.Information("[PipeServer] Stopping Named Pipe Server - signaling {ThreadCount} server threads to stop...", _activePipeHandlers.Count);
 
             _isRunning = false;
             _cancellationTokenSource?.Cancel();
@@ -83,23 +83,23 @@ namespace D365MetadataService.Services
             try
             {
                 await Task.WhenAll(_activePipeHandlers.ToArray());
-                _logger.Information("All {ThreadCount} server threads have stopped gracefully", _activePipeHandlers.Count);
+                _logger.Information("[PipeServer] All {ThreadCount} server threads have stopped gracefully", _activePipeHandlers.Count);
             }
             catch (Exception ex)
             {
-                _logger.Warning(ex, "Error waiting for pipe handlers to complete during shutdown");
+                _logger.Warning(ex, "[PipeServer] Error waiting for pipe handlers to complete during shutdown");
             }
 
             _activePipeHandlers.Clear();
 
-            _logger.Information("Named Pipe Server stopped successfully");
+            _logger.Information("[PipeServer] Named Pipe Server stopped successfully");
         }
 
         private async Task AcceptConnectionsAsync(CancellationToken cancellationToken)
         {
             try
             {
-                _logger.Information("Starting connection acceptance - creating {MaxConnections} persistent server threads", _maxConnections);
+                _logger.Information("[PipeServer] Starting connection acceptance - creating {MaxConnections} persistent server threads", _maxConnections);
 
                 // Create the fixed number of persistent server threads (Microsoft pattern)
                 for (int i = 0; i < _maxConnections; i++)
@@ -107,7 +107,7 @@ namespace D365MetadataService.Services
                     var serverTask = Task.Run(async () =>
                     {
                         var threadId = $"Thread-{i}";
-                        _logger.Debug("Starting persistent server thread: {ThreadId}", threadId);
+                        _logger.Debug("[PipeServer] Starting persistent server thread: {ThreadId}", threadId);
 
                         // Each thread continuously accepts connections until cancellation
                         while (!cancellationToken.IsCancellationRequested)
@@ -118,52 +118,52 @@ namespace D365MetadataService.Services
                                 using var pipeServer = CreatePipeServerInstance();
                                 var connectionId = Guid.NewGuid().ToString();
                                 
-                                _logger.Debug("Server thread {ThreadId} waiting for connection: {ConnectionId}", threadId, connectionId);
+                                _logger.Debug("[PipeServer] Server thread {ThreadId} waiting for connection: {ConnectionId}", threadId, connectionId);
                                 await pipeServer.WaitForConnectionAsync(cancellationToken);
-                                _logger.Debug("Client connected to {ThreadId}: {ConnectionId}", threadId, connectionId);
+                                _logger.Debug("[PipeServer] Client connected to {ThreadId}: {ConnectionId}", threadId, connectionId);
 
                                 // Handle the client with this dedicated pipe instance
                                 await HandleClientAsync(pipeServer, connectionId, cancellationToken);
-                                _logger.Debug("Client {ConnectionId} handling completed on {ThreadId}", connectionId, threadId);
+                                _logger.Debug("[PipeServer] Client {ConnectionId} handling completed on {ThreadId}", connectionId, threadId);
                                 
                                 // After handling this client, loop back to accept another connection
                             }
                             catch (OperationCanceledException)
                             {
                                 // Expected during shutdown - break out of the loop
-                                _logger.Debug("Server thread {ThreadId} cancelled", threadId);
+                                _logger.Debug("[PipeServer] Server thread {ThreadId} cancelled", threadId);
                                 break;
                             }
                             catch (Exception ex)
                             {
-                                _logger.Error(ex, "Error in server thread {ThreadId}, will retry", threadId);
+                                _logger.Error(ex, "[PipeServer] Error in server thread {ThreadId}, will retry", threadId);
                                 // Don't break - continue accepting new connections
                                 await Task.Delay(1000, cancellationToken); // Brief delay before retry
                             }
                         }
 
-                        _logger.Debug("Server thread {ThreadId} exiting", threadId);
+                        _logger.Debug("[PipeServer] Server thread {ThreadId} exiting", threadId);
                     }, cancellationToken);
 
                     _activePipeHandlers.Add(serverTask);
                 }
 
-                _logger.Information("Created {ThreadCount} persistent server threads, continuously accepting connections", _maxConnections);
+                _logger.Information("[PipeServer] Created {ThreadCount} persistent server threads, continuously accepting connections", _maxConnections);
 
                 // Wait for all server threads to complete (only happens during shutdown)
                 await Task.WhenAll(_activePipeHandlers.ToArray());
                 
-                _logger.Information("All server threads completed - server shutdown");
+                _logger.Information("[PipeServer] All server threads completed - server shutdown");
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Fatal error in connection acceptance");
+                _logger.Error(ex, "[PipeServer] Fatal error in connection acceptance");
             }
         }
 
         private NamedPipeServerStream CreatePipeServerInstance()
         {
-            _logger.Debug("Creating Named Pipe Server instance");
+            _logger.Debug("[PipeServer] Creating Named Pipe Server instance");
             return new NamedPipeServerStream(
                 _pipeName,
                 PipeDirection.InOut,
@@ -188,7 +188,7 @@ namespace D365MetadataService.Services
         {
             try
             {
-                _logger.Debug("Handling client connection: {ConnectionId}", connectionId);
+                _logger.Debug("[PipeServer] Handling client connection: {ConnectionId}", connectionId);
 
                 var buffer = new byte[4096];
                 var messageBuilder = new StringBuilder();
@@ -202,7 +202,7 @@ namespace D365MetadataService.Services
                         if (bytesRead == 0)
                         {
                             // Client disconnected
-                            _logger.Debug("Client disconnected: {ConnectionId}", connectionId);
+                            _logger.Debug("[PipeServer] Client disconnected: {ConnectionId}", connectionId);
                             break;
                         }
 
@@ -219,7 +219,7 @@ namespace D365MetadataService.Services
                     catch (IOException ex) when (ex.Message.Contains("pipe has been ended"))
                     {
                         // Client disconnected gracefully
-                        _logger.Debug("Client disconnected gracefully: {ConnectionId}", connectionId);
+                        _logger.Debug("[PipeServer] Client disconnected gracefully: {ConnectionId}", connectionId);
                         break;
                     }
                 }
@@ -230,7 +230,7 @@ namespace D365MetadataService.Services
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Error handling client connection: {ConnectionId}", connectionId);
+                _logger.Error(ex, "[PipeServer] Error handling client connection: {ConnectionId}", connectionId);
             }
         }
 
@@ -257,14 +257,14 @@ namespace D365MetadataService.Services
 
             try
             {
-                _logger.Debug("Processing message from {ConnectionId}", connectionId);
-                _logger.Debug("Raw message content: {Message}", message);
-                _logger.Debug("Message length: {Length}", message?.Length ?? 0);
+                _logger.Debug("[PipeServer] Processing message from {ConnectionId}", connectionId);
+                _logger.Debug("[PipeServer] Raw message content: {Message}", message);
+                _logger.Debug("[PipeServer] Message length: {Length}", message?.Length ?? 0);
 
                 // Add additional logging for JSON parsing issues
                 if (string.IsNullOrWhiteSpace(message))
                 {
-                    _logger.Warning("Received empty or null message from {ConnectionId}", connectionId);
+                    _logger.Warning("[PipeServer] Received empty or null message from {ConnectionId}", connectionId);
                     response = ServiceResponse.CreateError("Empty message received");
                 }
                 else
@@ -291,12 +291,12 @@ namespace D365MetadataService.Services
             }
             catch (JsonException ex)
             {
-                _logger.Warning(ex, "Invalid JSON received from client {ConnectionId}", connectionId);
+                _logger.Warning(ex, "[PipeServer] Invalid JSON received from client {ConnectionId}", connectionId);
                 response = ServiceResponse.CreateError($"Invalid JSON: {ex.Message}");
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Error processing request from client {ConnectionId}", connectionId);
+                _logger.Error(ex, "[PipeServer] Error processing request from client {ConnectionId}", connectionId);
                 response = ServiceResponse.CreateError($"Internal server error: {ex.Message}");
             }
 
@@ -311,7 +311,8 @@ namespace D365MetadataService.Services
 
         private async Task<ServiceResponse> HandleRequestAsync(ServiceRequest request)
         {
-            _logger.Information("Processing request: {Action} for {ObjectType}", request.Action, request.ObjectType);
+            var context = GetRequestContext(request);
+            _logger.Information("[PipeServer] Processing request: {Action}{Context}", request.Action, context);
 
             try
             {
@@ -326,14 +327,56 @@ namespace D365MetadataService.Services
             }
             catch (NotSupportedException ex)
             {
-                _logger.Warning(ex, "Unsupported action requested: {Action}", request.Action);
+                _logger.Warning(ex, "[PipeServer] Unsupported action requested: {Action}", request.Action);
                 return ServiceResponse.CreateError($"Unsupported action: {request.Action}");
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Error handling request {Action} for {ObjectType}", request.Action, request.ObjectType);
+                _logger.Error(ex, "[PipeServer] Error handling request {Action}{Context}", request.Action, context);
                 return ServiceResponse.CreateError($"Request handling failed: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Build a human-readable context string from the request for logging.
+        /// Prefers ObjectType:ObjectName, falls back to key parameters.
+        /// </summary>
+        private static string GetRequestContext(ServiceRequest request)
+        {
+            // If ObjectType is set, use it
+            if (!string.IsNullOrWhiteSpace(request.ObjectType))
+            {
+                var objectName = request.Parameters?.ContainsKey("objectName") == true
+                    ? request.Parameters["objectName"]?.ToString()
+                    : request.Parameters?.ContainsKey("ObjectName") == true
+                        ? request.Parameters["ObjectName"]?.ToString()
+                        : null;
+                return string.IsNullOrWhiteSpace(objectName)
+                    ? $" for {request.ObjectType}"
+                    : $" for {request.ObjectType}:{objectName}";
+            }
+
+            // For parameter-driven requests, pick the most relevant parameter
+            if (request.Parameters != null)
+            {
+                // Check common identifying parameters
+                string[] identifyingKeys = { "objectPath", "objectType", "labelIds", "model", "modelName", "pattern" };
+                foreach (var key in identifyingKeys)
+                {
+                    if (request.Parameters.ContainsKey(key))
+                    {
+                        var val = request.Parameters[key]?.ToString();
+                        if (!string.IsNullOrWhiteSpace(val))
+                        {
+                            // Truncate long values
+                            if (val.Length > 80) val = val.Substring(0, 77) + "...";
+                            return $" ({key}: {val})";
+                        }
+                    }
+                }
+            }
+
+            return string.Empty;
         }
 
         private async Task SendResponseAsync(NamedPipeServerStream pipeServer, ServiceResponse response, string connectionId)
@@ -345,11 +388,11 @@ namespace D365MetadataService.Services
 
                 await pipeServer.WriteAsync(data, 0, data.Length);
 
-                _logger.Debug("Response sent to client {ConnectionId}: {ResponseSize} bytes", connectionId, data.Length);
+                _logger.Debug("[PipeServer] Response sent to client {ConnectionId}: {ResponseSize} bytes", connectionId, data.Length);
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to send response to client {ConnectionId}", connectionId);
+                _logger.Error(ex, "[PipeServer] Failed to send response to client {ConnectionId}", connectionId);
             }
         }
     }

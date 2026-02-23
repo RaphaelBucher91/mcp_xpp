@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -32,7 +32,7 @@ namespace D365MetadataService.Services
         {
             try
             {
-                _logger.Information("🎯 Initializing D365 form control type cache...");
+                _logger.Information("[ControlFactory] Initializing D365 form control type cache...");
 
                 var metaModelAssembly = _reflectionManager.GetD365MetadataAssembly();
                 
@@ -60,8 +60,8 @@ namespace D365MetadataService.Services
                     }
                 }
 
-                _logger.Information("✅ Cached {Count} form control types", _controlTypeCache.Count);
-                _logger.Information("📋 Sample control types: {SampleTypes}", 
+                _logger.Information("[ControlFactory] Cached {Count} form control types", _controlTypeCache.Count);
+                _logger.Information("[ControlFactory] Sample control types: {SampleTypes}", 
                     string.Join(", ", _controlTypeCache.Keys.Take(20)));
                     
                 // Show specific types that patterns typically need
@@ -69,12 +69,12 @@ namespace D365MetadataService.Services
                 foreach (var controlType in patternControlTypes)
                 {
                     var hasType = _controlTypeCache.ContainsKey(controlType) || _controlTypeCache.ContainsKey($"AxForm{controlType}");
-                    _logger.Information("🔍 Control type '{ControlType}': {Status}", controlType, hasType ? "FOUND" : "MISSING");
+                    _logger.Information("[ControlFactory] Control type '{ControlType}': {Status}", controlType, hasType ? "FOUND" : "MISSING");
                 }
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "❌ Failed to initialize control type cache");
+                _logger.Error(ex, "[ControlFactory] Failed to initialize control type cache");
             }
         }
 
@@ -113,12 +113,12 @@ namespace D365MetadataService.Services
             if (string.IsNullOrEmpty(formControlTypeName))
                 return null;
 
-            _logger.Information("🔍 Creating control for FormControlType: '{FormControlType}'", formControlTypeName);
+            _logger.Information("[ControlFactory] Creating control for FormControlType: '{FormControlType}'", formControlTypeName);
 
             // Special case: QuickFilterControl is a FormControl with Type=Custom + FormControlExtension
             if (formControlTypeName == "QuickFilterControl")
             {
-                _logger.Information("🎯 Creating QuickFilterControl as base FormControl with extension");
+                _logger.Information("[ControlFactory] Creating QuickFilterControl as base FormControl with extension");
                 
                 if (_controlTypeCache.TryGetValue("AxFormControl", out var baseControlType))
                 {
@@ -140,7 +140,7 @@ namespace D365MetadataService.Services
                             {
                                 var customValue = Enum.Parse(formControlTypeEnum, "Custom");
                                 typeProp.SetValue(instance, customValue);
-                                _logger.Information("✅ Set QuickFilterControl Type to Custom");
+                                _logger.Information("[ControlFactory] Set QuickFilterControl Type to Custom");
                             }
                         }
                         
@@ -155,13 +155,13 @@ namespace D365MetadataService.Services
                             {
                                 // FormControlExtension is null, we need to create it
                                 var extensionType = extensionProperty.PropertyType;
-                                _logger.Information("🔧 Creating FormControlExtension of type: {ExtensionType}", extensionType.Name);
+                                _logger.Information("[ControlFactory] Creating FormControlExtension of type: {ExtensionType}", extensionType.Name);
                                 try 
                                 {
                                     var newExtension = Activator.CreateInstance(extensionType);
                                     extensionProperty.SetValue(instance, newExtension);
                                     extensionValue = newExtension;
-                                    _logger.Information("✅ Created FormControlExtension instance");
+                                    _logger.Information("[ControlFactory] Created FormControlExtension instance");
                                 }
                                 catch (Exception extEx)
                                 {
@@ -172,7 +172,7 @@ namespace D365MetadataService.Services
                                     foreach (var ctor in constructors)
                                     {
                                         var parameters = ctor.GetParameters();
-                                        _logger.Information("Constructor found with {ParamCount} parameters: {Params}", 
+                                        _logger.Information("[ControlFactory] Constructor found with {ParamCount} parameters: {Params}", 
                                             parameters.Length, 
                                             string.Join(", ", parameters.Select(p => $"{p.ParameterType.Name} {p.Name}")));
                                     }
@@ -185,27 +185,27 @@ namespace D365MetadataService.Services
                                 if (nameProperty != null && nameProperty.CanWrite)
                                 {
                                     nameProperty.SetValue(extensionValue, "QuickFilterControl");
-                                    _logger.Information("✅ Set FormControlExtension.Name = 'QuickFilterControl' for pattern matching");
+                                    _logger.Information("[ControlFactory] Set FormControlExtension.Name = 'QuickFilterControl' for pattern matching");
                                 }
                                 else
                                 {
-                                    _logger.Warning("⚠️ FormControlExtension.Name property not found or not writable");
+                                    _logger.Warning("[ControlFactory] FormControlExtension.Name property not found or not writable");
                                 }
                             }
                             else
                             {
-                                _logger.Warning("⚠️ Could not initialize FormControlExtension - pattern matching may fail");
+                                _logger.Warning("[ControlFactory] Could not initialize FormControlExtension - pattern matching may fail");
                             }
                         }
                         
                         // Apply pattern-required properties
                         ApplyPatternRequiredProperties(instance, baseControlType);
-                        _logger.Information("✅ Successfully created QuickFilterControl with extension");
+                        _logger.Information("[ControlFactory] Successfully created QuickFilterControl with extension");
                         return instance;
                     }
                     catch (Exception ex)
                     {
-                        _logger.Warning(ex, "Failed to create QuickFilterControl with extension");
+                        _logger.Warning(ex, "[ControlFactory] Failed to create QuickFilterControl with extension");
                     }
                 }
             }
@@ -222,7 +222,7 @@ namespace D365MetadataService.Services
             };
             if (virtualPatternTypes.Contains(formControlTypeName))
             {
-                _logger.Information("⏭️ Skipping virtual pattern type: '{PatternType}' (no concrete control needed)", formControlTypeName);
+                _logger.Information("[ControlFactory] Skipping virtual pattern type: '{PatternType}' (no concrete control needed)", formControlTypeName);
                 return null;
             }
 
@@ -231,7 +231,7 @@ namespace D365MetadataService.Services
             
             if (_controlTypeCache.TryGetValue(concreteTypeName, out var controlType))
             {
-                _logger.Information("✅ Found concrete type: {TypeName} for FormControlType: {FormControlType}", 
+                _logger.Information("[ControlFactory] Found concrete type: {TypeName} for FormControlType: {FormControlType}", 
                     controlType.Name, formControlTypeName);
                 
                 try
@@ -239,17 +239,17 @@ namespace D365MetadataService.Services
                     var instance = Activator.CreateInstance(controlType);
                     InitializeControl(instance, controlType);
                     
-                    _logger.Information("✅ Successfully created {TypeName}", controlType.Name);
+                    _logger.Information("[ControlFactory] Successfully created {TypeName}", controlType.Name);
                     return instance;
                 }
                 catch (Exception ex)
                 {
-                    _logger.Warning(ex, "Failed to create instance of {ControlType}", controlType.Name);
+                    _logger.Warning(ex, "[ControlFactory] Failed to create instance of {ControlType}", controlType.Name);
                     return null;
                 }
             }
 
-            _logger.Information("ℹ️ No concrete class found for '{FormControlType}' - may be virtual pattern type or extension", formControlTypeName);
+            _logger.Information("[ControlFactory] No concrete class found for '{FormControlType}' - may be virtual pattern type or extension", formControlTypeName);
             return null;
         }
 
@@ -261,12 +261,12 @@ namespace D365MetadataService.Services
             if (string.IsNullOrEmpty(controlTypeName))
                 return null;
 
-            _logger.Information("🔍 Looking for EXACT control type: '{ControlTypeName}'", controlTypeName);
+            _logger.Information("[ControlFactory] Looking for EXACT control type: '{ControlTypeName}'", controlTypeName);
 
             // Try EXACT match only - no more guessing!
             if (_controlTypeCache.TryGetValue(controlTypeName, out var type))
             {
-                _logger.Information("✅ Found EXACT match: {TypeName}", type.Name);
+                _logger.Information("[ControlFactory] Found EXACT match: {TypeName}", type.Name);
                 return type;
             }
 
@@ -274,12 +274,12 @@ namespace D365MetadataService.Services
             var axFormName = $"AxForm{controlTypeName}";
             if (_controlTypeCache.TryGetValue(axFormName, out var axFormType))
             {
-                _logger.Information("✅ Found with AxForm prefix: {TypeName}", axFormType.Name);
+                _logger.Information("[ControlFactory] Found with AxForm prefix: {TypeName}", axFormType.Name);
                 return axFormType;
             }
 
             // List what we actually have for debugging
-            _logger.Warning("❌ Control type '{ControlTypeName}' does NOT exist in D365 metadata", controlTypeName);
+            _logger.Warning("[ControlFactory] Control type '{ControlTypeName}' does NOT exist in D365 metadata", controlTypeName);
             
             var possibleMatches = _controlTypeCache.Keys
                 .Where(k => k.ToLowerInvariant().Contains(controlTypeName.ToLowerInvariant()))
@@ -288,12 +288,12 @@ namespace D365MetadataService.Services
                 
             if (possibleMatches.Any())
             {
-                _logger.Information("📋 Possible similar types: {SimilarTypes}", string.Join(", ", possibleMatches));
+                _logger.Information("[ControlFactory] Possible similar types: {SimilarTypes}", string.Join(", ", possibleMatches));
             }
             else
             {
-                _logger.Warning("📋 NO similar types found for '{ControlTypeName}'", controlTypeName);
-                _logger.Information("📋 Available control types sample: {AvailableTypes}", 
+                _logger.Warning("[ControlFactory] NO similar types found for '{ControlTypeName}'", controlTypeName);
+                _logger.Information("[ControlFactory] Available control types sample: {AvailableTypes}", 
                     string.Join(", ", _controlTypeCache.Keys.Take(10)));
             }
 
@@ -313,25 +313,25 @@ namespace D365MetadataService.Services
                     return null;
                 }
 
-                _logger.Information("🎛️ Creating control: {ControlType}", controlType.Name);
+                _logger.Information("[ControlFactory] Creating control: {ControlType}", controlType.Name);
 
                 // Create instance
                 var instance = Activator.CreateInstance(controlType);
                 if (instance == null)
                 {
-                    _logger.Warning("❌ Failed to create instance of {ControlType}", controlType.Name);
+                    _logger.Warning("[ControlFactory] Failed to create instance of {ControlType}", controlType.Name);
                     return null;
                 }
 
                 // Initialize the control properly (like D365 constructors do)
                 InitializeControl(instance, controlType);
 
-                _logger.Information("✅ Successfully created and initialized {ControlType}", controlType.Name);
+                _logger.Information("[ControlFactory] Successfully created and initialized {ControlType}", controlType.Name);
                 return instance;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "❌ Error creating control {ControlTypeName}", controlTypeName);
+                _logger.Error(ex, "[ControlFactory] Error creating control {ControlTypeName}", controlTypeName);
                 return null;
             }
         }
@@ -351,19 +351,19 @@ namespace D365MetadataService.Services
                 if (setDefaultValuesMethod != null)
                 {
                     setDefaultValuesMethod.Invoke(control, null);
-                    _logger.Debug("✅ Called SetDefaultValues() for {ControlType}", controlType.Name);
+                    _logger.Debug("[ControlFactory] Called SetDefaultValues() for {ControlType}", controlType.Name);
                     
                     // DIAGNOSTIC: Check if Type property was set correctly by SetDefaultValues
                     var typeProperty = controlType.GetProperty("Type");
                     if (typeProperty != null)
                     {
                         var typeValue = typeProperty.GetValue(control);
-                        _logger.Information("🔍 DIAGNOSTIC: {ControlType} Type property = {TypeValue} ({TypeType})", 
+                        _logger.Information("[ControlFactory] DIAGNOSTIC: {ControlType} Type property = {TypeValue} ({TypeType})", 
                             controlType.Name, typeValue?.ToString() ?? "null", typeValue?.GetType().Name ?? "null");
                     }
                     else
                     {
-                        _logger.Warning("⚠️ DIAGNOSTIC: {ControlType} has no Type property!", controlType.Name);
+                        _logger.Warning("[ControlFactory] DIAGNOSTIC: {ControlType} has no Type property!", controlType.Name);
                     }
                     
                     // Apply pattern-specific property requirements
@@ -378,12 +378,12 @@ namespace D365MetadataService.Services
                 if (initCollectionsMethod != null)
                 {
                     initCollectionsMethod.Invoke(control, null);
-                    _logger.Debug("✅ Called InitializeNullCollections() for {ControlType}", controlType.Name);
+                    _logger.Debug("[ControlFactory] Called InitializeNullCollections() for {ControlType}", controlType.Name);
                 }
             }
             catch (Exception ex)
             {
-                _logger.Warning(ex, "⚠️ Error initializing control {ControlType}", controlType.Name);
+                _logger.Warning(ex, "[ControlFactory] Error initializing control {ControlType}", controlType.Name);
             }
         }
 
@@ -403,12 +403,12 @@ namespace D365MetadataService.Services
                 if (nameProperty != null && nameProperty.CanWrite)
                 {
                     nameProperty.SetValue(control, name);
-                    _logger.Debug("🏷️ Set control name: {Name}", name);
+                    _logger.Debug("[ControlFactory] Set control name: {Name}", name);
                 }
             }
             catch (Exception ex)
             {
-                _logger.Warning(ex, "⚠️ Failed to set control name to {Name}", name);
+                _logger.Warning(ex, "[ControlFactory] Failed to set control name to {Name}", name);
             }
         }
 
@@ -459,7 +459,7 @@ namespace D365MetadataService.Services
                 {
                     case "AxFormActionPaneControl":
                         SetPropertyIfExists(control, controlType, "Style", "Standard");
-                        _logger.Information("🔧 Applied ActionPane pattern properties");
+                        _logger.Information("[ControlFactory] Applied ActionPane pattern properties");
                         break;
                         
                     case "AxFormGroupControl":
@@ -467,7 +467,7 @@ namespace D365MetadataService.Services
                         // For now, apply common group properties
                         SetPropertyIfExists(control, controlType, "FrameType", "None");
                         SetPropertyIfExists(control, controlType, "Caption", "");
-                        _logger.Information("🔧 Applied Group pattern properties");
+                        _logger.Information("[ControlFactory] Applied Group pattern properties");
                         break;
                         
                     case "AxFormGridControl":
@@ -479,7 +479,7 @@ namespace D365MetadataService.Services
                         SetPropertyIfExists(control, controlType, "Width", -1);
                         SetPropertyIfExists(control, controlType, "HeightMode", "SizeToAvailable");
                         SetPropertyIfExists(control, controlType, "Height", -1);
-                        _logger.Information("🔧 Applied Grid pattern properties");
+                        _logger.Information("[ControlFactory] Applied Grid pattern properties");
                         break;
                         
                     case "AxFormTabControl":
@@ -488,23 +488,23 @@ namespace D365MetadataService.Services
                         SetPropertyIfExists(control, controlType, "Width", -1);
                         SetPropertyIfExists(control, controlType, "HeightMode", "SizeToAvailable");
                         SetPropertyIfExists(control, controlType, "Height", -1);
-                        _logger.Information("🔧 Applied Tab pattern properties");
+                        _logger.Information("[ControlFactory] Applied Tab pattern properties");
                         break;
                         
                     case "AxFormTabPageControl":
                         SetPropertyIfExists(control, controlType, "PanelStyle", "Auto");
-                        _logger.Information("🔧 Applied TabPage pattern properties");
+                        _logger.Information("[ControlFactory] Applied TabPage pattern properties");
                         break;
                         
                     case "AxFormControl": // QuickFilterControl
                         SetPropertyIfExists(control, controlType, "WidthMode", "SizeToAvailable");
-                        _logger.Information("🔧 Applied QuickFilterControl pattern properties");
+                        _logger.Information("[ControlFactory] Applied QuickFilterControl pattern properties");
                         break;
                 }
             }
             catch (Exception ex)
             {
-                _logger.Warning(ex, "Failed to apply pattern properties for {ControlType}", controlType.Name);
+                _logger.Warning(ex, "[ControlFactory] Failed to apply pattern properties for {ControlType}", controlType.Name);
             }
         }
 
@@ -521,16 +521,16 @@ namespace D365MetadataService.Services
                     // Convert string values to appropriate enum types if needed
                     object convertedValue = ConvertValueForProperty(value, property.PropertyType);
                     property.SetValue(control, convertedValue);
-                    _logger.Debug("✅ Set {PropertyName} = {Value} on {ControlType}", propertyName, convertedValue, controlType.Name);
+                    _logger.Debug("[ControlFactory] Set {PropertyName} = {Value} on {ControlType}", propertyName, convertedValue, controlType.Name);
                 }
                 else
                 {
-                    _logger.Debug("⚠️ Property {PropertyName} not found or not writable on {ControlType}", propertyName, controlType.Name);
+                    _logger.Debug("[ControlFactory] Property {PropertyName} not found or not writable on {ControlType}", propertyName, controlType.Name);
                 }
             }
             catch (Exception ex)
             {
-                _logger.Debug(ex, "Failed to set property {PropertyName} on {ControlType}", propertyName, controlType.Name);
+                _logger.Debug(ex, "[ControlFactory] Failed to set property {PropertyName} on {ControlType}", propertyName, controlType.Name);
             }
         }
 
@@ -554,7 +554,7 @@ namespace D365MetadataService.Services
                 }
                 catch
                 {
-                    _logger.Debug("Failed to parse enum {EnumType} from value {Value}", targetType.Name, stringValue);
+                    _logger.Debug("[ControlFactory] Failed to parse enum {EnumType} from value {Value}", targetType.Name, stringValue);
                     return value;
                 }
             }

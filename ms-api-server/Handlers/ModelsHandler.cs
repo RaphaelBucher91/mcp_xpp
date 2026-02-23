@@ -1,4 +1,4 @@
-using D365MetadataService.Models;
+﻿using D365MetadataService.Models;
 using D365MetadataService.Services;
 using Microsoft.Dynamics.AX.Metadata.Storage;
 using Serilog;
@@ -34,7 +34,7 @@ namespace D365MetadataService.Handlers
             if (validationError != null)
                 return validationError;
 
-            Logger.Information("Handling comprehensive Models request: {@Request}", new { request.Action, request.Id });
+            Logger.Information("[Models] Handling comprehensive Models request: {@Request}", new { request.Action, request.Id });
 
             try
             {
@@ -44,7 +44,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Failed to process models request");
+                Logger.Error(ex, "[Models] Failed to process models request");
                 return ServiceResponse.CreateError($"Models operation failed: {ex.Message}");
             }
         }
@@ -54,7 +54,7 @@ namespace D365MetadataService.Handlers
             try
             {
                 // Use dynamic model discovery for both standard and custom models
-                Logger.Information("Getting all models via dynamic discovery...");
+                Logger.Information("[Models] Getting all models via dynamic discovery...");
                 var allModels = GetStandardD365Models(); // Now discovers ALL models dynamically
 
                 var totalObjects = allModels.Sum(m => {
@@ -92,14 +92,14 @@ namespace D365MetadataService.Handlers
                     }
                 };
 
-                Logger.Information("Dynamic model discovery complete: {TotalModels} total ({CustomModels} custom, {StandardModels} standard), {TotalObjects} total objects", 
+                Logger.Information("[Models] Dynamic model discovery complete: {TotalModels} total ({CustomModels} custom, {StandardModels} standard), {TotalObjects} total objects", 
                     allModels.Count, customModels, standardModels, totalObjects);
 
                 return result;
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error in GetComprehensiveModelsInformation");
+                Logger.Error(ex, "[Models] Error in GetComprehensiveModelsInformation");
                 throw;
             }
         }
@@ -112,34 +112,34 @@ namespace D365MetadataService.Handlers
             {
                 // PHASE 1: Discover standard D365 models from PackagesLocalDirectory
                 var standardMetadataPath = _config.D365Config.PackagesLocalDirectory;
-                Logger.Information("Phase 1: Discovering standard models from: {MetadataPath}", standardMetadataPath);
+                Logger.Information("[Models] Phase 1: Discovering standard models from: {MetadataPath}", standardMetadataPath);
 
                 var standardModels = DiscoverModelsFromPath(standardMetadataPath);
                 discoveredModels.AddRange(standardModels);
-                Logger.Information("Phase 1: Found {Count} standard models", standardModels.Count);
+                Logger.Information("[Models] Phase 1: Found {Count} standard models", standardModels.Count);
 
                 // PHASE 2: Discover custom models from CustomMetadataPath
                 var customMetadataPath = _config.D365Config.CustomMetadataPath;
                 if (!string.IsNullOrEmpty(customMetadataPath) && customMetadataPath != standardMetadataPath)
                 {
-                    Logger.Information("Phase 2: Discovering custom models from: {MetadataPath}", customMetadataPath);
+                    Logger.Information("[Models] Phase 2: Discovering custom models from: {MetadataPath}", customMetadataPath);
                     
                     var customModels = DiscoverModelsFromPath(customMetadataPath);
                     discoveredModels.AddRange(customModels);
-                    Logger.Information("Phase 2: Found {Count} custom models", customModels.Count);
+                    Logger.Information("[Models] Phase 2: Found {Count} custom models", customModels.Count);
                 }
                 else
                 {
-                    Logger.Information("Phase 2: Skipping custom model discovery (same path or not configured)");
+                    Logger.Information("[Models] Phase 2: Skipping custom model discovery (same path or not configured)");
                 }
 
-                Logger.Information("Total model discovery complete: {TotalCount} models", discoveredModels.Count);
+                Logger.Information("[Models] Total model discovery complete: {TotalCount} models", discoveredModels.Count);
 
                 return discoveredModels;
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error discovering models");
+                Logger.Error(ex, "[Models] Error discovering models");
                 return discoveredModels; // Return what we have so far
             }
         }
@@ -161,12 +161,12 @@ namespace D365MetadataService.Handlers
                 // This is the same approach used in D365ObjectFactory.cs
                 if (provider?.ModelManifest != null)
                 {
-                    Logger.Debug("Getting models from MetadataProvider.ModelManifest at {Path}", metadataPath);
+                    Logger.Debug("[Models] Getting models from MetadataProvider.ModelManifest at {Path}", metadataPath);
                     
                     try
                     {
                         var modelList = provider.ModelManifest.ListModels();
-                        Logger.Debug("Found {Count} models using ListModels()", modelList?.Count ?? 0);
+                        Logger.Debug("[Models] Found {Count} models using ListModels()", modelList?.Count ?? 0);
 
                         if (modelList != null)
                         {
@@ -174,7 +174,7 @@ namespace D365MetadataService.Handlers
                             {
                                 try
                                 {
-                                    Logger.Debug("Processing model: {ModelName}", modelName);
+                                    Logger.Debug("[Models] Processing model: {ModelName}", modelName);
                                     
                                     var modelInfo = provider.ModelManifest.Read(modelName);
                                     if (modelInfo != null)
@@ -208,12 +208,12 @@ namespace D365MetadataService.Handlers
                                         };
 
                                         models.Add(modelData);
-                                        Logger.Debug("Added model: {Name} (ID: {Id}, Layer: {Layer}, Publisher: {Publisher}, Objects: {ObjectCount})", 
+                                        Logger.Debug("[Models] Added model: {Name} (ID: {Id}, Layer: {Layer}, Publisher: {Publisher}, Objects: {ObjectCount})", 
                                             modelInfo.Name, modelInfo.Id, modelInfo.Layer, modelInfo.Publisher, objectCount);
                                     }
                                     else
                                     {
-                                        Logger.Warning("Could not read model info for: {ModelName}", modelName);
+                                        Logger.Warning("[Models] Could not read model info for: {ModelName}", modelName);
                                         models.Add(new
                                         {
                                             Name = modelName,
@@ -230,7 +230,7 @@ namespace D365MetadataService.Handlers
                                 }
                                 catch (Exception ex)
                                 {
-                                    Logger.Error(ex, "Error processing model {ModelName}: {Message}", modelName, ex.Message);
+                                    Logger.Error(ex, "[Models] Error processing model {ModelName}: {Message}", modelName, ex.Message);
                                     models.Add(new
                                     {
                                         Name = modelName,
@@ -255,12 +255,12 @@ namespace D365MetadataService.Handlers
                 }
                 else
                 {
-                    Logger.Warning("Could not create metadata provider for path: {Path}", metadataPath);
+                    Logger.Warning("[Models] Could not create metadata provider for path: {Path}", metadataPath);
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error discovering models from {Path}", metadataPath);
+                Logger.Error(ex, "[Models] Error discovering models from {Path}", metadataPath);
             }
 
             return models;

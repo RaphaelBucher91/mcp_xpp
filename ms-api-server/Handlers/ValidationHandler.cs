@@ -1,4 +1,4 @@
-using D365MetadataService.Models;
+﻿using D365MetadataService.Models;
 using D365MetadataService.Services;
 using Serilog;
 using System;
@@ -40,7 +40,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error validating parameters for {ObjectType}", request.ObjectType);
+                Logger.Error(ex, "[Validation] Error validating parameters for {ObjectType}", request.ObjectType);
                 return Task.FromResult(ServiceResponse.CreateError($"Parameter validation failed: {ex.Message}"));
             }
         }

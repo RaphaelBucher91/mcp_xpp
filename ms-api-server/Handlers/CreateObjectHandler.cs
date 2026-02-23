@@ -1,4 +1,4 @@
-using D365MetadataService.Models;
+﻿using D365MetadataService.Models;
 using D365MetadataService.Services;
 using Serilog;
 using System;
@@ -42,7 +42,7 @@ namespace D365MetadataService.Handlers
             if (parameters.ContainsKey("discoverParameters") && 
                 Convert.ToBoolean(parameters["discoverParameters"]))
             {
-                Logger.Information("Discovering parameters for {ObjectType}", request.ObjectType);
+                Logger.Information("[CreateObject] Discovering parameters for {ObjectType}", request.ObjectType);
                 
                 var discoveryResult = _parameterDiscoveryService.DiscoverParameters(request.ObjectType);
                 
@@ -64,7 +64,7 @@ namespace D365MetadataService.Handlers
             }
 
             // Standard object creation
-            Logger.Information("Creating {ObjectType} object using dynamic factory", request.ObjectType);
+            Logger.Information("[CreateObject] Creating {ObjectType} object using dynamic factory", request.ObjectType);
 
             var result = await _objectFactory.CreateObjectDynamicallyAsync(
                 request.ObjectType, 

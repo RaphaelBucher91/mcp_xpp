@@ -1,4 +1,4 @@
-using D365MetadataService.Models;
+﻿using D365MetadataService.Models;
 using D365MetadataService.Services;
 using Microsoft.Dynamics.AX.Metadata.Providers;
 using Microsoft.Dynamics.AX.Metadata.Storage;
@@ -33,7 +33,7 @@ namespace D365MetadataService.Handlers
 
         protected override async Task<ServiceResponse> HandleRequestAsync(ServiceRequest request)
         {
-            Logger.Information("Starting COMPREHENSIVE list objects by model request");
+            Logger.Information("[ListObjects] Starting COMPREHENSIVE list objects by model request");
 
             try
             {
@@ -61,13 +61,13 @@ namespace D365MetadataService.Handlers
                                 if (customModels != null && customModels.Contains(requestedModel))
                                 {
                                     metadataPath = _config.D365Config.CustomMetadataPath;
-                                    Logger.Information("Using custom metadata path for model {Model}: {Path}", requestedModel, metadataPath);
+                                    Logger.Information("[ListObjects] Using custom metadata path for model {Model}: {Path}", requestedModel, metadataPath);
                                 }
                             }
                         }
                         catch (Exception ex)
                         {
-                            Logger.Debug("Could not check custom metadata path for model {Model}: {Error}", requestedModel, ex.Message);
+                            Logger.Debug("[ListObjects] Could not check custom metadata path for model {Model}: {Error}", requestedModel, ex.Message);
                         }
                     }
                     
@@ -75,7 +75,7 @@ namespace D365MetadataService.Handlers
                     if (string.IsNullOrEmpty(metadataPath))
                     {
                         metadataPath = _config.D365Config.PackagesLocalDirectory;
-                        Logger.Information("Using standard packages path for model {Model}: {Path}", requestedModel, metadataPath);
+                        Logger.Information("[ListObjects] Using standard packages path for model {Model}: {Path}", requestedModel, metadataPath);
                     }
                 }
                 
@@ -89,13 +89,13 @@ namespace D365MetadataService.Handlers
                 // Execute the CPU-bound metadata work on a background thread
                 var response = await Task.Run(() => PerformMetadataWork(targetModels, metadataPath));
 
-                Logger.Information("Successfully enumerated ALL object types from models");
+                Logger.Information("[ListObjects] Successfully enumerated ALL object types from models");
 
                 return new ServiceResponse { Success = true, Data = response };
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Failed to list objects by model");
+                Logger.Error(ex, "[ListObjects] Failed to list objects by model");
                 return new ServiceResponse { Success = false, Error = $"Failed to list objects by model: {ex.Message}" };
             }
         }
@@ -114,9 +114,9 @@ namespace D365MetadataService.Handlers
             {
                 try
                 {
-                    Logger.Information("🔍 Comprehensively processing model: {ModelName}", modelName);
+                    Logger.Information("[ListObjects] Comprehensively processing model: {ModelName}", modelName);
                     
-                    // ✅ HARDCODING ELIMINATED: Use centralized D365ReflectionManager
+                    // HARDCODING ELIMINATED: Use centralized D365ReflectionManager
                     var objects = _reflectionManager.GetAllObjectsForModel(provider, modelName);
                     var modelObjectCount = objects.Values.OfType<System.Collections.IEnumerable>()
                         .Sum(collection => collection.Cast<object>().Count());
@@ -135,16 +135,16 @@ namespace D365MetadataService.Handlers
                         totalObjects += modelObjectCount;
                         modelsProcessed++;
 
-                        Logger.Information("✅ Found {Count} total objects in model {Model}", modelObjectCount, modelName);
+                        Logger.Information("[ListObjects] Found {Count} total objects in model {Model}", modelObjectCount, modelName);
                     }
                     else
                     {
-                        Logger.Information("   ⚠️ No objects found in model {Model}", modelName);
+                        Logger.Information("[ListObjects]    No objects found in model {Model}", modelName);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Logger.Warning("Failed to process model {Model}: {Error}", modelName, ex.Message);
+                    Logger.Warning("[ListObjects] Failed to process model {Model}: {Error}", modelName, ex.Message);
                     // Continue processing other models
                 }
             }
@@ -154,7 +154,7 @@ namespace D365MetadataService.Handlers
                 .Distinct()
                 .Count();
 
-            Logger.Information("🎉 COMPREHENSIVE enumeration complete: {TotalObjects} objects across {ObjectTypes} types", 
+            Logger.Information("[ListObjects] COMPREHENSIVE enumeration complete: {TotalObjects} objects across {ObjectTypes} types", 
                 totalObjects, 
                 distinctObjectTypes);
 

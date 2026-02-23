@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
@@ -24,13 +25,13 @@ namespace D365MetadataService
                 // Initialize logging first
                 InitializeLogging();
 
-                _logger.Information("=== D365 Metadata Service Starting ===");
-                _logger.Information("Process ID: {ProcessId}", System.Diagnostics.Process.GetCurrentProcess().Id);
-                _logger.Information("Working Directory: {WorkingDirectory}", Environment.CurrentDirectory);
+                _logger.Information("[Program] === D365 Metadata Service Starting ===");
+                _logger.Information("[Program] Process ID: {ProcessId}", System.Diagnostics.Process.GetCurrentProcess().Id);
+                _logger.Information("[Program] Working Directory: {WorkingDirectory}", Environment.CurrentDirectory);
 
                 // Load configuration
                 var config = LoadConfiguration();
-                _logger.Information("Configuration loaded successfully");
+                _logger.Information("[Program] Configuration loaded successfully");
 
                 // Set up dependency injection
                 var services = new ServiceCollection();
@@ -39,7 +40,12 @@ namespace D365MetadataService
 
                 // Get the Named Pipe Server from DI container
                 _namedPipeServer = serviceProvider.GetRequiredService<NamedPipeServer>();
-                _logger.Information("Using Named Pipes transport with Handler pattern");
+                _logger.Information("[Program] Using Named Pipes transport with Handler pattern");
+
+                // Eagerly initialize cross-reference database and log what was found
+                var handlers = serviceProvider.GetServices<IRequestHandler>();
+                var crossRefHandler = handlers.OfType<CrossReferenceHandler>().FirstOrDefault();
+                crossRefHandler?.TryInitialize();
 
                 // Handle graceful shutdown
                 Console.CancelKeyPress += OnCancelKeyPress;
@@ -48,8 +54,8 @@ namespace D365MetadataService
                 // Start the server
                 await _namedPipeServer.StartAsync();
 
-                _logger.Information("=== D365 Metadata Service Started Successfully ===");
-                _logger.Information("Press Ctrl+C to stop the service");
+                _logger.Information("[Program] === D365 Metadata Service Started Successfully ===");
+                _logger.Information("[Program] Press Ctrl+C to stop the service");
 
                 // Keep the service running
                 await WaitForShutdownAsync();
@@ -58,7 +64,7 @@ namespace D365MetadataService
             {
                 if (_logger != null)
                 {
-                    _logger.Fatal(ex, "Fatal error during service startup");
+                    _logger.Fatal(ex, "[Program] Fatal error during service startup");
                 }
                 else
                 {
@@ -110,6 +116,13 @@ namespace D365MetadataService
             // Register FileSystemManager singleton instance for proper assembly loading and path discovery
             services.AddSingleton<FileSystemManager>(_ => FileSystemManager.Instance);
 
+            // Register Label Parser Service
+            services.AddSingleton<LabelParser>(sp =>
+                new LabelParser(
+                    config.D365Config.PackagesLocalDirectory,
+                    config.D365Config.CustomMetadataPath,
+                    sp.GetRequiredService<ILogger>()));
+
             // Register all request handlers
             services.AddSingleton<IRequestHandler, CreateObjectHandler>();
             services.AddSingleton<IRequestHandler, CreateFormHandler>();  // Enhanced form handler with pattern support
@@ -142,6 +155,9 @@ namespace D365MetadataService
 
             // Register cross-reference handler
             services.AddSingleton<IRequestHandler, CrossReferenceHandler>();
+
+            // Register label handler
+            services.AddSingleton<IRequestHandler, LabelHandler>();
 
             // Register handler factory
             services.AddSingleton<RequestHandlerFactory>();
@@ -201,8 +217,8 @@ namespace D365MetadataService
             if (string.IsNullOrEmpty(config.D365Config.DefaultModel))
                 config.D365Config.DefaultModel = "ApplicationSuite"; // Set default if not specified
 
-            _logger.Information("Configuration validated successfully");
-            _logger.Information("Service will use Named Pipes: {PipeName} with max {MaxConnections} connections", 
+            _logger.Information("[Program] Configuration validated successfully");
+            _logger.Information("[Program] Service will use Named Pipes: {PipeName} with max {MaxConnections} connections", 
                 config.PipeName, config.MaxConnections);
         }
 
@@ -216,7 +232,7 @@ namespace D365MetadataService
 
         private static void OnCancelKeyPress(object sender, ConsoleCancelEventArgs e)
         {
-            _logger.Information("Shutdown signal received (Ctrl+C)");
+            _logger.Information("[Program] Shutdown signal received (Ctrl+C)");
             e.Cancel = true; // Prevent immediate termination
 
             // Trigger graceful shutdown
@@ -235,7 +251,7 @@ namespace D365MetadataService
 
         private static void OnProcessExit(object sender, EventArgs e)
         {
-            _logger.Information("Process exit signal received");
+            _logger.Information("[Program] Process exit signal received");
             
             // Perform synchronous cleanup
             try
@@ -244,29 +260,29 @@ namespace D365MetadataService
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Error during process exit cleanup");
+                _logger.Error(ex, "[Program] Error during process exit cleanup");
             }
         }
 
         private static async Task GracefulShutdownAsync()
         {
-            _logger.Information("=== Starting Graceful Shutdown ===");
+            _logger.Information("[Program] === Starting Graceful Shutdown ===");
 
             try
             {
                 if (_namedPipeServer != null)
                 {
-                    _logger.Information("Stopping Named Pipe Server...");
+                    _logger.Information("[Program] Stopping Named Pipe Server...");
                     await _namedPipeServer.StopAsync();
-                    _logger.Information("Named Pipe Server stopped");
+                    _logger.Information("[Program] Named Pipe Server stopped");
                 }
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Error during graceful shutdown");
+                _logger.Error(ex, "[Program] Error during graceful shutdown");
             }
 
-            _logger.Information("=== Graceful Shutdown Complete ===");
+            _logger.Information("[Program] === Graceful Shutdown Complete ===");
         }
     }
 }

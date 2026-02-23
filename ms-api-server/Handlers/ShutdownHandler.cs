@@ -1,4 +1,4 @@
-using D365MetadataService.Models;
+﻿using D365MetadataService.Models;
 using Serilog;
 using System;
 using System.Threading.Tasks;
@@ -28,7 +28,7 @@ namespace D365MetadataService.Handlers
 
             try
             {
-                Logger.Information("Handling Shutdown request: {@Request}", new { request.Action, request.Id });
+                Logger.Information("[Shutdown] Handling Shutdown request: {@Request}", new { request.Action, request.Id });
 
                 var result = new
                 {
@@ -41,16 +41,16 @@ namespace D365MetadataService.Handlers
                 Task.Run(async () =>
                 {
                     await Task.Delay(100); // Small delay to ensure response is sent
-                    Logger.Information("Executing shutdown callback");
+                    Logger.Information("[Shutdown] Executing shutdown callback");
                     _shutdownCallback?.Invoke();
                 });
 
-                Logger.Information("Shutdown request processed successfully");
+                Logger.Information("[Shutdown] Shutdown request processed successfully");
                 return Task.FromResult(ServiceResponse.CreateSuccess(result));
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Failed to process shutdown request");
+                Logger.Error(ex, "[Shutdown] Failed to process shutdown request");
                 return Task.FromResult(ServiceResponse.CreateError($"Shutdown operation failed: {ex.Message}"));
             }
         }

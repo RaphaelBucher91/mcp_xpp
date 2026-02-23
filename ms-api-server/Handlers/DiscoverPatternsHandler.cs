@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.IO;
@@ -30,13 +30,13 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                _logger.Information("DiscoverPatternsHandler: Starting pattern discovery");
+                _logger.Information("[DiscoverPatterns] Starting pattern discovery");
 
                 var patterns = await DiscoverAvailablePatternsAsync();
 
                 if (patterns?.Any() == true)
                 {
-                    _logger.Information("✅ Successfully discovered {PatternCount} patterns", patterns.Count);
+                    _logger.Information("[DiscoverPatterns] Successfully discovered {PatternCount} patterns", patterns.Count);
                     
                     return ServiceResponse.CreateSuccess(new
                     {
@@ -48,7 +48,7 @@ namespace D365MetadataService.Handlers
                 }
                 else
                 {
-                    _logger.Warning("⚠️ No patterns found or pattern discovery failed");
+                    _logger.Warning("[DiscoverPatterns] No patterns found or pattern discovery failed");
                     return ServiceResponse.CreateSuccess(new
                     {
                         Success = false,
@@ -60,7 +60,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "💥 Pattern discovery failed");
+                _logger.Error(ex, "[DiscoverPatterns] Pattern discovery failed");
                 return ServiceResponse.CreateError($"Pattern discovery failed: {ex.Message}");
             }
         }
@@ -69,13 +69,13 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                _logger.Information("🔍 Loading D365 Patterns assembly...");
+                _logger.Information("[DiscoverPatterns] Loading D365 Patterns assembly...");
 
                 // Dynamically discover the VS D365 extension path
                 var vsExtensionPath = _fileSystemManager.GetVSExtensionPath("Microsoft.Dynamics.AX.Metadata.Patterns.dll");
                 if (string.IsNullOrEmpty(vsExtensionPath))
                 {
-                    _logger.Error("VS D365 extension path not found. Ensure Visual Studio with D365 tools is installed.");
+                    _logger.Error("[DiscoverPatterns] VS D365 extension path not found. Ensure Visual Studio with D365 tools is installed.");
                     return null;
                 }
                 var patternsAssemblyPath = Path.Combine(vsExtensionPath, "Microsoft.Dynamics.AX.Metadata.Patterns.dll");
@@ -83,13 +83,13 @@ namespace D365MetadataService.Handlers
 
                 if (!File.Exists(patternsAssemblyPath))
                 {
-                    _logger.Error("Patterns assembly not found at {Path}", patternsAssemblyPath);
+                    _logger.Error("[DiscoverPatterns] Patterns assembly not found at {Path}", patternsAssemblyPath);
                     return null;
                 }
 
                 if (!File.Exists(metadataAssemblyPath))
                 {
-                    _logger.Error("Metadata assembly not found at {Path}", metadataAssemblyPath);
+                    _logger.Error("[DiscoverPatterns] Metadata assembly not found at {Path}", metadataAssemblyPath);
                     return null;
                 }
 
@@ -101,40 +101,40 @@ namespace D365MetadataService.Handlers
 
                 if (patternFactoryType == null)
                 {
-                    _logger.Error("PatternFactory type not found in assembly");
+                    _logger.Error("[DiscoverPatterns] PatternFactory type not found in assembly");
                     return null;
                 }
 
                 if (axFormDesignType == null)
                 {
-                    _logger.Error("AxFormDesign type not found in metadata assembly");
+                    _logger.Error("[DiscoverPatterns] AxFormDesign type not found in metadata assembly");
                     return null;
                 }
 
                 // Create PatternFactory instance
                 var patternFactory = Activator.CreateInstance(patternFactoryType, new object[] { true });
-                _logger.Information("✅ PatternFactory created");
+                _logger.Information("[DiscoverPatterns] PatternFactory created");
 
                 // Create a dummy AxFormDesign instance to test pattern applicability
                 var dummyFormDesign = Activator.CreateInstance(axFormDesignType);
-                _logger.Information("✅ Dummy AxFormDesign created for pattern matching");
+                _logger.Information("[DiscoverPatterns] Dummy AxFormDesign created for pattern matching");
 
                 // Get patterns applicable to forms using GetPatternsForTarget
                 var getPatternsForTargetMethod = patternFactoryType.GetMethod("GetPatternsForTarget");
                 if (getPatternsForTargetMethod == null)
                 {
-                    _logger.Error("GetPatternsForTarget method not found");
+                    _logger.Error("[DiscoverPatterns] GetPatternsForTarget method not found");
                     return null;
                 }
 
                 var applicablePatterns = getPatternsForTargetMethod.Invoke(patternFactory, new object[] { dummyFormDesign });
                 if (applicablePatterns == null)
                 {
-                    _logger.Warning("GetPatternsForTarget returned null");
+                    _logger.Warning("[DiscoverPatterns] GetPatternsForTarget returned null");
                     return Task.FromResult(new List<object>());
                 }
 
-                _logger.Information("🔍 Processing applicable form patterns...");
+                _logger.Information("[DiscoverPatterns] Processing applicable form patterns...");
 
                 // Convert to our format
                 var patternList = new List<object>();
@@ -154,12 +154,12 @@ namespace D365MetadataService.Handlers
                         }
                         catch (Exception ex)
                         {
-                            _logger.Warning(ex, "Failed to extract info for pattern");
+                            _logger.Warning(ex, "[DiscoverPatterns] Failed to extract info for pattern");
                         }
                     }
                 }
 
-                _logger.Information("✅ Successfully processed {PatternCount} applicable form patterns", patternList.Count);
+                _logger.Information("[DiscoverPatterns] Successfully processed {PatternCount} applicable form patterns", patternList.Count);
                 
                 // Sort by name for better usability
                 patternList = patternList.OrderBy(p => ((dynamic)p).Name).ToList();
@@ -168,7 +168,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to discover patterns");
+                _logger.Error(ex, "[DiscoverPatterns] Failed to discover patterns");
                 return Task.FromResult<List<object>>(null);
             }
         }
@@ -195,12 +195,12 @@ namespace D365MetadataService.Handlers
                 // Only include active patterns
                 if (active is bool isActive && !isActive)
                 {
-                    _logger.Debug("Skipping inactive pattern: {PatternName}", name);
+                    _logger.Debug("[DiscoverPatterns] Skipping inactive pattern: {PatternName}", name);
                     return null;
                 }
 
                 // Since we used GetPatternsForTarget with AxFormDesign, all patterns returned are applicable to forms
-                _logger.Debug("Including applicable form pattern: {PatternName} (Category: {Category})", name, category);
+                _logger.Debug("[DiscoverPatterns] Including applicable form pattern: {PatternName} (Category: {Category})", name, category);
 
                 return new
                 {
@@ -214,7 +214,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                _logger.Warning(ex, "Failed to extract pattern info");
+                _logger.Warning(ex, "[DiscoverPatterns] Failed to extract pattern info");
                 return null;
             }
         }

@@ -1,4 +1,4 @@
-using D365MetadataService.Models;
+﻿using D365MetadataService.Models;
 using D365MetadataService.Services;
 using Microsoft.Dynamics.AX.Metadata.MetaModel;
 using Microsoft.Dynamics.AX.Metadata.Providers;
@@ -46,7 +46,7 @@ namespace D365MetadataService.Handlers
             if (validationError != null)
                 return validationError;
 
-            Logger.Information("Handling Inspect Object request: {@Request}", new { request.Action, request.Id });
+            Logger.Information("[Inspect] Handling Inspect Object request: {@Request}", new { request.Action, request.Id });
 
             try
             {
@@ -119,7 +119,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error inspecting D365 object");
+                Logger.Error(ex, "[Inspect] Error inspecting D365 object");
                 return ServiceResponse.CreateError($"Failed to inspect object: {ex.Message}");
             }
         }
@@ -131,7 +131,7 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                Logger.Information("Inspecting {ObjectType} '{ObjectName}' using enhanced reflection with object instance loading", objectType, objectName);
+                Logger.Information("[Inspect] Inspecting {ObjectType} '{ObjectName}' using enhanced reflection with object instance loading", objectType, objectName);
 
                 // Get the D365 type from reflection manager
                 var axType = _reflectionManager.GetD365Type(objectType);
@@ -159,7 +159,7 @@ namespace D365MetadataService.Handlers
                 }
                 catch (Exception ex)
                 {
-                    Logger.Warning(ex, "Failed to get ObjectFactory from ReflectionManager, will fallback to type-only inspection");
+                    Logger.Warning(ex, "[Inspect] Failed to get ObjectFactory from ReflectionManager, will fallback to type-only inspection");
                 }
                 
                 if (objectFactory != null)
@@ -170,16 +170,16 @@ namespace D365MetadataService.Handlers
                         objectLoaded = actualObject != null;
                         if (objectLoaded)
                         {
-                            Logger.Information("✅ Successfully loaded actual object instance for {ObjectType}:{ObjectName}", objectType, objectName);
+                            Logger.Information("[Inspect] Successfully loaded actual object instance for {ObjectType}:{ObjectName}", objectType, objectName);
                         }
                         else
                         {
-                            Logger.Information("⚠️ Object instance not found, will inspect type definition only for {ObjectType}:{ObjectName}", objectType, objectName);
+                            Logger.Information("[Inspect] Object instance not found, will inspect type definition only for {ObjectType}:{ObjectName}", objectType, objectName);
                         }
                     }
                     catch (Exception ex)
                     {
-                        Logger.Warning(ex, "Failed to load object instance for {ObjectType}:{ObjectName}, falling back to type inspection", objectType, objectName);
+                        Logger.Warning(ex, "[Inspect] Failed to load object instance for {ObjectType}:{ObjectName}, falling back to type inspection", objectType, objectName);
                     }
                 }
 
@@ -209,7 +209,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error inspecting object type {ObjectType} for {ObjectName} using enhanced reflection", objectType, objectName);
+                Logger.Error(ex, "[Inspect] Error inspecting object type {ObjectType} for {ObjectName} using enhanced reflection", objectType, objectName);
                 return Task.FromResult<object>(new
                 {
                     ObjectName = objectName,
@@ -232,7 +232,7 @@ namespace D365MetadataService.Handlers
                     .Where(p => !IsCollectionType(p.PropertyType)) // FILTER OUT COLLECTIONS - they go to Collections section
                     .ToArray();
 
-                Logger.Debug("Found {Count} non-collection properties for {TypeName}", propertyInfos.Length, type.Name);
+                Logger.Debug("[Inspect] Found {Count} non-collection properties for {TypeName}", propertyInfos.Length, type.Name);
 
                 // PERFORMANCE OPTIMIZATION: Get all property labels and descriptions in ONE call
                 // instead of calling GetAllPropertiesWithLabelsAndValues for each property
@@ -246,12 +246,12 @@ namespace D365MetadataService.Handlers
                     {
                         propertyLabelDescCache[propDetail.Name] = (propDetail.Label, propDetail.Description);
                     }
-                    Logger.Debug("Cached labels and descriptions for {Count} properties from single VS lookup", 
+                    Logger.Debug("[Inspect] Cached labels and descriptions for {Count} properties from single VS lookup", 
                         propertyLabelDescCache.Count);
                 }
                 else
                 {
-                    Logger.Warning("❌ Failed to get property details for {TypeName}: {Error}", 
+                    Logger.Warning("[Inspect] Failed to get property details for {TypeName}: {Error}", 
                         type.Name, allPropertyDetails.Error ?? "Unknown error");
                 }
 
@@ -289,7 +289,7 @@ namespace D365MetadataService.Handlers
                         }
                         catch (Exception ex)
                         {
-                            Logger.Warning(ex, "Failed to get enum values for property {PropertyName} of type {PropertyType}", prop.Name, prop.PropertyType.Name);
+                            Logger.Warning(ex, "[Inspect] Failed to get enum values for property {PropertyName} of type {PropertyType}", prop.Name, prop.PropertyType.Name);
                         }
                     }
                     // Check if it's a nullable enum
@@ -305,7 +305,7 @@ namespace D365MetadataService.Handlers
                         }
                         catch (Exception ex)
                         {
-                            Logger.Warning(ex, "Failed to get nullable enum values for property {PropertyName}", prop.Name);
+                            Logger.Warning(ex, "[Inspect] Failed to get nullable enum values for property {PropertyName}", prop.Name);
                         }
                     }
                     // SPECIAL CASE: For D365 enum properties, try to get the actual enum values
@@ -324,7 +324,7 @@ namespace D365MetadataService.Handlers
                     // DEBUG: Log description retrieval for first few properties to verify Label vs Description are different
                     if (properties.Count < 5)
                     {
-                        Logger.Information("🔍 Property '{PropertyName}' label: '{Label}', description: '{Description}'", 
+                        Logger.Information("[Inspect] Property '{PropertyName}' label: '{Label}', description: '{Description}'", 
                             prop.Name, label ?? "(null)", description ?? "(null)");
                     }
 
@@ -352,7 +352,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Warning(ex, "Error inspecting properties with values for {TypeName}", type.Name);
+                Logger.Warning(ex, "[Inspect] Error inspecting properties with values for {TypeName}", type.Name);
             }
 
             return properties;
@@ -401,7 +401,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Warning(ex, "Error inspecting type properties for {TypeName}", type.Name);
+                Logger.Warning(ex, "[Inspect] Error inspecting type properties for {TypeName}", type.Name);
             }
 
             return properties;
@@ -448,19 +448,19 @@ namespace D365MetadataService.Handlers
             
             try
             {
-                Logger.Information("🔍 Dynamic collection discovery for {TypeName}", type.Name);
+                Logger.Information("[Inspect] Dynamic collection discovery for {TypeName}", type.Name);
 
                 var collectionProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                     .Where(p => IsCollectionType(p.PropertyType))
                     .ToArray();
 
-                Logger.Information("Found {Count} collection properties on {TypeName}", collectionProperties.Length, type.Name);
+                Logger.Information("[Inspect] Found {Count} collection properties on {TypeName}", collectionProperties.Length, type.Name);
 
                 foreach (var collectionProp in collectionProperties)
                 {
                     try
                     {
-                        Logger.Debug("Inspecting collection property: {PropertyName} of type {PropertyType}", 
+                        Logger.Debug("[Inspect] Inspecting collection property: {PropertyName} of type {PropertyType}", 
                             collectionProp.Name, collectionProp.PropertyType.Name);
 
                         var itemNames = GetCollectionItemNames(collectionProp, objectInstance);
@@ -475,12 +475,12 @@ namespace D365MetadataService.Handlers
                             Items = itemNames
                         };
 
-                        Logger.Debug("✅ Successfully processed collection: {PropertyName} with {Count} items", 
+                        Logger.Debug("[Inspect] Successfully processed collection: {PropertyName} with {Count} items", 
                             collectionProp.Name, count);
                     }
                     catch (Exception ex)
                     {
-                        Logger.Warning(ex, "⚠️ Error processing collection property {PropertyName}", collectionProp.Name);
+                        Logger.Warning(ex, "[Inspect] Error processing collection property {PropertyName}", collectionProp.Name);
                         
                         // Add error info but don't fail the entire operation
                         collections[collectionProp.Name] = new
@@ -495,10 +495,10 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "❌ Error during dynamic collection discovery for {TypeName}", type.Name);
+                Logger.Error(ex, "[Inspect] Error during dynamic collection discovery for {TypeName}", type.Name);
             }
 
-            Logger.Information("✅ Dynamic collection discovery complete: found {Count} collections", collections.Count);
+            Logger.Information("[Inspect] Dynamic collection discovery complete: found {Count} collections", collections.Count);
             return collections;
         }
 
@@ -528,7 +528,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Debug(ex, "Could not determine element type for {CollectionType}", collectionType.Name);
+                Logger.Debug(ex, "[Inspect] Could not determine element type for {CollectionType}", collectionType.Name);
             }
             
             return "Unknown";
@@ -582,7 +582,7 @@ namespace D365MetadataService.Handlers
                         }
                         catch (Exception ex)
                         {
-                            Logger.Debug(ex, "Error extracting name from collection item {Count}", count);
+                            Logger.Debug(ex, "[Inspect] Error extracting name from collection item {Count}", count);
                             itemNames.Add($"<error accessing item {count}>");
                         }
                     }
@@ -590,7 +590,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Warning(ex, "Error getting collection item names for {PropertyName}", collectionProp.Name);
+                Logger.Warning(ex, "[Inspect] Error getting collection item names for {PropertyName}", collectionProp.Name);
                 itemNames.Add($"<error: {ex.Message.Substring(0, Math.Min(50, ex.Message.Length))}>");
             }
 
@@ -629,7 +629,7 @@ namespace D365MetadataService.Handlers
                     }
                     catch (Exception ex)
                     {
-                        Logger.Debug(ex, "Error accessing property {PropertyName} on item of type {ItemType}", propName, itemType.Name);
+                        Logger.Debug(ex, "[Inspect] Error accessing property {PropertyName} on item of type {ItemType}", propName, itemType.Name);
                     }
                 }
 
@@ -638,7 +638,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Debug(ex, "Error extracting identifier from item");
+                Logger.Debug(ex, "[Inspect] Error extracting identifier from item");
                 return $"<error: {ex.Message.Substring(0, Math.Min(30, ex.Message.Length))}>";
             }
         }
@@ -688,7 +688,7 @@ namespace D365MetadataService.Handlers
                     }
                     catch (Exception ex)
                     {
-                        Logger.Debug(ex, "Error accessing property {PropertyName} on collection item", propName);
+                        Logger.Debug(ex, "[Inspect] Error accessing property {PropertyName} on collection item", propName);
                     }
                 }
 
@@ -709,7 +709,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Debug(ex, "Error extracting collection item info safely");
+                Logger.Debug(ex, "[Inspect] Error extracting collection item info safely");
                 return new 
                 { 
                     Type = item?.GetType().Name ?? "unknown", 
@@ -759,7 +759,7 @@ namespace D365MetadataService.Handlers
                         count++;
                         if (count > 1000) // Safety limit
                         {
-                            Logger.Warning("Collection {PropertyName} has more than 1000 items, stopping count", collectionProp.Name);
+                            Logger.Warning("[Inspect] Collection {PropertyName} has more than 1000 items, stopping count", collectionProp.Name);
                             return 1000;
                         }
                     }
@@ -768,7 +768,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Debug(ex, "Could not get count for collection {PropertyName}", collectionProp.Name);
+                Logger.Debug(ex, "[Inspect] Could not get count for collection {PropertyName}", collectionProp.Name);
             }
 
             return 0;
@@ -809,7 +809,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Warning(ex, "Error inspecting type collections for {TypeName}", type.Name);
+                Logger.Warning(ex, "[Inspect] Error inspecting type collections for {TypeName}", type.Name);
             }
 
             return collections;
@@ -906,7 +906,7 @@ namespace D365MetadataService.Handlers
                 var declaringTypeName = prop.DeclaringType?.Name;
                 var declaringTypeFullName = prop.DeclaringType?.FullName;
                 
-                Logger.Debug("🔍 Getting label and description for property '{PropertyName}' declared in type '{DeclaringType}' (full: '{FullType}') for object '{ObjectType}'", 
+                Logger.Debug("[Inspect] Getting label and description for property '{PropertyName}' declared in type '{DeclaringType}' (full: '{FullType}') for object '{ObjectType}'", 
                     prop.Name, declaringTypeName, declaringTypeFullName, objectTypeName);
 
                 // Single VS MetaModel lookup for both label and description
@@ -919,7 +919,7 @@ namespace D365MetadataService.Handlers
                         var label = propertyDetail.Label;
                         var description = propertyDetail.Description;
 
-                        Logger.Debug("✅ Found property data for {PropertyName}: Label='{Label}', Description='{Description}'", 
+                        Logger.Debug("[Inspect] Found property data for {PropertyName}: Label='{Label}', Description='{Description}'", 
                             prop.Name, label ?? "(null)", description ?? "(null)");
 
                         // Return both values from single lookup
@@ -927,13 +927,13 @@ namespace D365MetadataService.Handlers
                     }
                     else
                     {
-                        Logger.Debug("❌ No property detail found for {PropertyName} in {ObjectType} (checked {Count} properties)", 
+                        Logger.Debug("[Inspect] No property detail found for {PropertyName} in {ObjectType} (checked {Count} properties)", 
                             prop.Name, objectTypeName, propertyDiscovery.Properties.Count);
                     }
                 }
                 else
                 {
-                    Logger.Warning("❌ Property discovery failed for {ObjectType}: {Error}", objectTypeName, propertyDiscovery.Error);
+                    Logger.Warning("[Inspect] Property discovery failed for {ObjectType}: {Error}", objectTypeName, propertyDiscovery.Error);
                 }
 
                 // Fallback to reflection-based attribute scanning for both label and description
@@ -1007,7 +1007,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Warning(ex, "Error getting label and description for property {PropertyName}", prop.Name);
+                Logger.Warning(ex, "[Inspect] Error getting label and description for property {PropertyName}", prop.Name);
                 return (null, null);
             }
         }
@@ -1020,7 +1020,7 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                Logger.Debug("🎯 Checking property {PropertyName} of type {PropertyType} for enum values", 
+                Logger.Debug("[Inspect] Checking property {PropertyName} of type {PropertyType} for enum values", 
                     prop.Name, prop.PropertyType.Name);
 
                 // Strategy 1: Direct .NET enum
@@ -1029,13 +1029,13 @@ namespace D365MetadataService.Handlers
                     try
                     {
                         var enumValues = Enum.GetNames(prop.PropertyType).ToList();
-                        Logger.Information("✅ Found direct enum values for {PropertyName}: {Count} values", 
+                        Logger.Information("[Inspect] Found direct enum values for {PropertyName}: {Count} values", 
                             prop.Name, enumValues.Count);
                         return enumValues;
                     }
                     catch (Exception ex)
                     {
-                        Logger.Warning(ex, "Failed to get direct enum values for {PropertyName}", prop.Name);
+                        Logger.Warning(ex, "[Inspect] Failed to get direct enum values for {PropertyName}", prop.Name);
                     }
                 }
 
@@ -1048,13 +1048,13 @@ namespace D365MetadataService.Handlers
                     {
                         var enumType = prop.PropertyType.GetGenericArguments()[0];
                         var enumValues = Enum.GetNames(enumType).ToList();
-                        Logger.Information("✅ Found nullable enum values for {PropertyName}: {Count} values", 
+                        Logger.Information("[Inspect] Found nullable enum values for {PropertyName}: {Count} values", 
                             prop.Name, enumValues.Count);
                         return enumValues;
                     }
                     catch (Exception ex)
                     {
-                        Logger.Warning(ex, "Failed to get nullable enum values for {PropertyName}", prop.Name);
+                        Logger.Warning(ex, "[Inspect] Failed to get nullable enum values for {PropertyName}", prop.Name);
                     }
                 }
 
@@ -1070,14 +1070,14 @@ namespace D365MetadataService.Handlers
                         if (enumType != null)
                         {
                             var enumValues = Enum.GetNames(enumType).ToList();
-                            Logger.Information("✅ Found D365 enum values for {PropertyName} via {EnumType}: {Count} values", 
+                            Logger.Information("[Inspect] Found D365 enum values for {PropertyName} via {EnumType}: {Count} values", 
                                 prop.Name, enumType.Name, enumValues.Count);
                             return enumValues;
                         }
                     }
                     catch (Exception ex)
                     {
-                        Logger.Warning(ex, "Failed to get D365 enum values for {PropertyName}", prop.Name);
+                        Logger.Warning(ex, "[Inspect] Failed to get D365 enum values for {PropertyName}", prop.Name);
                     }
                 }
 
@@ -1085,7 +1085,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Warning(ex, "Error getting enum possible values for property {PropertyName}", prop.Name);
+                Logger.Warning(ex, "[Inspect] Error getting enum possible values for property {PropertyName}", prop.Name);
                 return null;
             }
         }
@@ -1168,7 +1168,7 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                Logger.Information("Getting summary for {ObjectType} '{ObjectName}'", objectType, objectName);
+                Logger.Information("[Inspect] Getting summary for {ObjectType} '{ObjectName}'", objectType, objectName);
 
                 // Get the D365 type from reflection manager
                 var axType = _reflectionManager.GetD365Type(objectType);
@@ -1199,7 +1199,7 @@ namespace D365MetadataService.Handlers
                 }
                 catch (Exception ex)
                 {
-                    Logger.Warning(ex, "Failed to load object instance for summary");
+                    Logger.Warning(ex, "[Inspect] Failed to load object instance for summary");
                 }
 
                 if (!objectLoaded)
@@ -1245,7 +1245,7 @@ namespace D365MetadataService.Handlers
                     }
                     catch (Exception ex)
                     {
-                        Logger.Warning(ex, "Error getting collection summary for {PropertyName}", collectionProp.Name);
+                        Logger.Warning(ex, "[Inspect] Error getting collection summary for {PropertyName}", collectionProp.Name);
                         collectionSummaries[collectionProp.Name] = new
                         {
                             ItemType = "Unknown",
@@ -1280,7 +1280,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error getting object summary for {ObjectType} '{ObjectName}'", objectType, objectName);
+                Logger.Error(ex, "[Inspect] Error getting object summary for {ObjectType} '{ObjectName}'", objectType, objectName);
                 return Task.FromResult<object>(new
                 {
                     ObjectName = objectName,
@@ -1298,7 +1298,7 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                Logger.Information("Getting properties for {ObjectType} '{ObjectName}'", objectType, objectName);
+                Logger.Information("[Inspect] Getting properties for {ObjectType} '{ObjectName}'", objectType, objectName);
 
                 // Get the D365 type from reflection manager
                 var axType = _reflectionManager.GetD365Type(objectType);
@@ -1329,7 +1329,7 @@ namespace D365MetadataService.Handlers
                 }
                 catch (Exception ex)
                 {
-                    Logger.Warning(ex, "Failed to load object instance for properties");
+                    Logger.Warning(ex, "[Inspect] Failed to load object instance for properties");
                 }
 
                 if (!objectLoaded)
@@ -1357,7 +1357,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error getting properties for {ObjectType} '{ObjectName}'", objectType, objectName);
+                Logger.Error(ex, "[Inspect] Error getting properties for {ObjectType} '{ObjectName}'", objectType, objectName);
                 return Task.FromResult<object>(new
                 {
                     ObjectName = objectName,
@@ -1375,7 +1375,7 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                Logger.Information("Getting collection '{CollectionName}' for {ObjectType} '{ObjectName}'", collectionName, objectType, objectName);
+                Logger.Information("[Inspect] Getting collection '{CollectionName}' for {ObjectType} '{ObjectName}'", collectionName, objectType, objectName);
 
                 // Get the D365 type from reflection manager
                 var axType = _reflectionManager.GetD365Type(objectType);
@@ -1407,7 +1407,7 @@ namespace D365MetadataService.Handlers
                 }
                 catch (Exception ex)
                 {
-                    Logger.Warning(ex, "Failed to load object instance for collection");
+                    Logger.Warning(ex, "[Inspect] Failed to load object instance for collection");
                 }
 
                 if (!objectLoaded)
@@ -1459,7 +1459,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error getting collection '{CollectionName}' for {ObjectType} '{ObjectName}'", collectionName, objectType, objectName);
+                Logger.Error(ex, "[Inspect] Error getting collection '{CollectionName}' for {ObjectType} '{ObjectName}'", collectionName, objectType, objectName);
                 return Task.FromResult<object>(new
                 {
                     ObjectName = objectName,
@@ -1560,7 +1560,7 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                Logger.Information("Getting code for {ObjectType} '{ObjectName}' - Target: {CodeTarget}", objectType, objectName, codeTarget);
+                Logger.Information("[Inspect] Getting code for {ObjectType} '{ObjectName}' - Target: {CodeTarget}", objectType, objectName, codeTarget);
 
                 // Get the D365 type from reflection manager  
                 var axType = _reflectionManager.GetD365Type(objectType);
@@ -1586,7 +1586,7 @@ namespace D365MetadataService.Handlers
                 }
                 catch (Exception ex)
                 {
-                    Logger.Warning(ex, "Failed to get ObjectFactory from ReflectionManager, will fallback to type-only inspection");
+                    Logger.Warning(ex, "[Inspect] Failed to get ObjectFactory from ReflectionManager, will fallback to type-only inspection");
                 }
                 
                 if (objectFactory != null)
@@ -1596,11 +1596,11 @@ namespace D365MetadataService.Handlers
                         // Attempt to load actual object instance using GetExistingObject
                         actualObject = objectFactory.GetExistingObject(objectType, objectName);
                         objectLoaded = actualObject != null;
-                        Logger.Debug("Object instance loaded: {IsLoaded} for {ObjectType}.{ObjectName}", objectLoaded, objectType, objectName);
+                        Logger.Debug("[Inspect] Object instance loaded: {IsLoaded} for {ObjectType}.{ObjectName}", objectLoaded, objectType, objectName);
                     }
                     catch (Exception ex)
                     {
-                        Logger.Debug("Could not load object instance for {ObjectType}.{ObjectName}: {Error}", objectType, objectName, ex.Message);
+                        Logger.Debug("[Inspect] Could not load object instance for {ObjectType}.{ObjectName}: {Error}", objectType, objectName, ex.Message);
                     }
                 }
                 
@@ -1613,7 +1613,7 @@ namespace D365MetadataService.Handlers
                     }
                     catch (Exception ex)
                     {
-                        Logger.Debug("Could not create instance for type inspection: {Error}", ex.Message);
+                        Logger.Debug("[Inspect] Could not create instance for type inspection: {Error}", ex.Message);
                         return Task.FromResult<object>(new
                         {
                             ObjectName = objectName,
@@ -1648,7 +1648,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error getting code for {ObjectType} '{ObjectName}'", objectType, objectName);
+                Logger.Error(ex, "[Inspect] Error getting code for {ObjectType} '{ObjectName}'", objectType, objectName);
                 return Task.FromResult<object>(new
                 {
                     ObjectName = objectName,
@@ -1711,7 +1711,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error extracting all methods code from {ObjectType}", axType.Name);
+                Logger.Error(ex, "[Inspect] Error extracting all methods code from {ObjectType}", axType.Name);
                 return new
                 {
                     Methods = methods,
@@ -1765,7 +1765,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error extracting specific method code for '{MethodName}' from {ObjectType}", methodName, axType.Name);
+                Logger.Error(ex, "[Inspect] Error extracting specific method code for '{MethodName}' from {ObjectType}", methodName, axType.Name);
                 return new { Error = ex.Message };
             }
         }
@@ -1842,7 +1842,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error extracting method code data");
+                Logger.Error(ex, "[Inspect] Error extracting method code data");
                 return new
                 {
                     Name = "Unknown",
@@ -1911,7 +1911,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Debug("Could not extract parameters: {Error}", ex.Message);
+                Logger.Debug("[Inspect] Could not extract parameters: {Error}", ex.Message);
             }
             
             return parameters;
@@ -1937,7 +1937,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Debug("Could not extract return type: {Error}", ex.Message);
+                Logger.Debug("[Inspect] Could not extract return type: {Error}", ex.Message);
             }
             
             return "void";
@@ -1958,7 +1958,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Debug("Could not extract visibility: {Error}", ex.Message);
+                Logger.Debug("[Inspect] Could not extract visibility: {Error}", ex.Message);
             }
             
             return "public";
@@ -1979,7 +1979,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Debug("Could not extract flag {FlagName}: {Error}", flagName, ex.Message);
+                Logger.Debug("[Inspect] Could not extract flag {FlagName}: {Error}", flagName, ex.Message);
             }
             
             return false;
@@ -2000,7 +2000,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Debug("Could not extract parameter flag {FlagName}: {Error}", flagName, ex.Message);
+                Logger.Debug("[Inspect] Could not extract parameter flag {FlagName}: {Error}", flagName, ex.Message);
             }
             
             return false;
@@ -2015,7 +2015,7 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                Logger.Information("🏃‍♂️ Fast summary inspection for {ObjectType}:{ObjectName}", objectType, objectName);
+                Logger.Information("[Inspect] Fast summary inspection for {ObjectType}:{ObjectName}", objectType, objectName);
 
                 var axType = _reflectionManager.GetD365Type(objectType);
                 if (axType == null)
@@ -2044,7 +2044,7 @@ namespace D365MetadataService.Handlers
                 }
                 catch (Exception ex)
                 {
-                    Logger.Debug(ex, "Could not load object for summary, will use type inspection");
+                    Logger.Debug(ex, "[Inspect] Could not load object for summary, will use type inspection");
                 }
 
                 // Get collection counts quickly
@@ -2062,7 +2062,7 @@ namespace D365MetadataService.Handlers
                     }
                     catch (Exception ex)
                     {
-                        Logger.Debug(ex, "Could not get count for collection {CollectionName}", collectionProp.Name);
+                        Logger.Debug(ex, "[Inspect] Could not get count for collection {CollectionName}", collectionProp.Name);
                         collectionCounts[collectionProp.Name] = 0;
                     }
                 }
@@ -2083,7 +2083,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error in summary mode inspection for {ObjectType}:{ObjectName}", objectType, objectName);
+                Logger.Error(ex, "[Inspect] Error in summary mode inspection for {ObjectType}:{ObjectName}", objectType, objectName);
                 return Task.FromResult<object>(new
                 {
                     ObjectName = objectName,
@@ -2101,7 +2101,7 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                Logger.Information("🔧 Properties-only inspection for {ObjectType}:{ObjectName}", objectType, objectName);
+                Logger.Information("[Inspect] Properties-only inspection for {ObjectType}:{ObjectName}", objectType, objectName);
 
                 var axType = _reflectionManager.GetD365Type(objectType);
                 if (axType == null)
@@ -2144,7 +2144,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error in properties mode inspection for {ObjectType}:{ObjectName}", objectType, objectName);
+                Logger.Error(ex, "[Inspect] Error in properties mode inspection for {ObjectType}:{ObjectName}", objectType, objectName);
                 return Task.FromResult<object>(new
                 {
                     ObjectName = objectName,
@@ -2162,7 +2162,7 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                Logger.Information("📋 Collection inspection for {ObjectType}:{ObjectName} collection '{CollectionName}' with filter '{FilterPattern}'", 
+                Logger.Information("[Inspect] Collection inspection for {ObjectType}:{ObjectName} collection '{CollectionName}' with filter '{FilterPattern}'", 
                     objectType, objectName, collectionName, filterPattern ?? "none");
 
                 var axType = _reflectionManager.GetD365Type(objectType);
@@ -2215,7 +2215,7 @@ namespace D365MetadataService.Handlers
                 }
                 catch (Exception ex)
                 {
-                    Logger.Debug(ex, "Could not load object, will return empty collection");
+                    Logger.Debug(ex, "[Inspect] Could not load object, will return empty collection");
                 }
 
                 // Get collection items
@@ -2227,7 +2227,7 @@ namespace D365MetadataService.Handlers
                 if (!string.IsNullOrEmpty(filterPattern))
                 {
                     var filteredItems = ApplyWildcardFilter(itemNames, filterPattern, item => item);
-                    Logger.Information("🔍 Filtered {TotalCount} items to {FilteredCount} using pattern '{FilterPattern}'", 
+                    Logger.Information("[Inspect] Filtered {TotalCount} items to {FilteredCount} using pattern '{FilterPattern}'", 
                         totalCount, filteredItems.Count, filterPattern);
                     itemNames = filteredItems;
                 }
@@ -2255,7 +2255,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error in collection mode inspection for {ObjectType}:{ObjectName} collection '{CollectionName}'", objectType, objectName, collectionName);
+                Logger.Error(ex, "[Inspect] Error in collection mode inspection for {ObjectType}:{ObjectName} collection '{CollectionName}'", objectType, objectName, collectionName);
                 return Task.FromResult<object>(new
                 {
                     ObjectName = objectName,
@@ -2274,7 +2274,7 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                Logger.Information("💻 Code inspection for {ObjectType}:{ObjectName} target '{CodeTarget}' method '{MethodName}'", 
+                Logger.Information("[Inspect] Code inspection for {ObjectType}:{ObjectName} target '{CodeTarget}' method '{MethodName}'", 
                     objectType, objectName, codeTarget, methodName ?? "all");
 
                 // Delegate to the existing code inspection handler
@@ -2282,7 +2282,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error in code mode inspection for {ObjectType}:{ObjectName}", objectType, objectName);
+                Logger.Error(ex, "[Inspect] Error in code mode inspection for {ObjectType}:{ObjectName}", objectType, objectName);
                 return Task.FromResult<object>(new
                 {
                     ObjectName = objectName,
@@ -2311,7 +2311,7 @@ namespace D365MetadataService.Handlers
         {
             try
             {
-                Logger.Information("Inspecting {ObjectType} '{ObjectName}' using detailed reflection with object instance loading", objectType, objectName);
+                Logger.Information("[Inspect] Inspecting {ObjectType} '{ObjectName}' using detailed reflection with object instance loading", objectType, objectName);
 
                 // Get the D365 type from reflection manager
                 var axType = _reflectionManager.GetD365Type(objectType);
@@ -2339,7 +2339,7 @@ namespace D365MetadataService.Handlers
                 }
                 catch (Exception ex)
                 {
-                    Logger.Warning(ex, "Failed to get ObjectFactory from ReflectionManager, will fallback to type-only inspection");
+                    Logger.Warning(ex, "[Inspect] Failed to get ObjectFactory from ReflectionManager, will fallback to type-only inspection");
                 }
                 
                 if (objectFactory != null)
@@ -2350,16 +2350,16 @@ namespace D365MetadataService.Handlers
                         objectLoaded = actualObject != null;
                         if (objectLoaded)
                         {
-                            Logger.Information("✅ Successfully loaded actual object instance for {ObjectType}:{ObjectName}", objectType, objectName);
+                            Logger.Information("[Inspect] Successfully loaded actual object instance for {ObjectType}:{ObjectName}", objectType, objectName);
                         }
                         else
                         {
-                            Logger.Information("⚠️ Object instance not found, will inspect type definition only for {ObjectType}:{ObjectName}", objectType, objectName);
+                            Logger.Information("[Inspect] Object instance not found, will inspect type definition only for {ObjectType}:{ObjectName}", objectType, objectName);
                         }
                     }
                     catch (Exception ex)
                     {
-                        Logger.Warning(ex, "Failed to load object instance for {ObjectType}:{ObjectName}, falling back to type inspection", objectType, objectName);
+                        Logger.Warning(ex, "[Inspect] Failed to load object instance for {ObjectType}:{ObjectName}, falling back to type inspection", objectType, objectName);
                     }
                 }
 
@@ -2389,7 +2389,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error in detailed mode inspection for {ObjectType}:{ObjectName}", objectType, objectName);
+                Logger.Error(ex, "[Inspect] Error in detailed mode inspection for {ObjectType}:{ObjectName}", objectType, objectName);
                 return Task.FromResult<object>(new
                 {
                     ObjectName = objectName,

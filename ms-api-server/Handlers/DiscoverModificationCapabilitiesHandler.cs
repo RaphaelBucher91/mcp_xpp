@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using D365MetadataService.Services;
@@ -42,12 +42,12 @@ namespace D365MetadataService.Handlers
                     return ServiceResponse.CreateError("objectType cannot be empty");
                 }
 
-                Logger.Information("Discovering modification capabilities for {ObjectType}", objectType);
+                Logger.Information("[DiscoverCapabilities] Discovering modification capabilities for {ObjectType}", objectType);
 
                 // Use the dynamic reflection service to discover capabilities
                 var capabilities = await _reflectionService.DiscoverModificationCapabilitiesAsync(objectType);
 
-                Logger.Information("Found {MethodCount} modification methods for {ObjectType}", 
+                Logger.Information("[DiscoverCapabilities] Found {MethodCount} modification methods for {ObjectType}", 
                     capabilities.ModificationMethods?.Count ?? 0, objectType);
 
                 return ServiceResponse.CreateSuccess(capabilities);
@@ -55,7 +55,7 @@ namespace D365MetadataService.Handlers
             catch (Exception ex)
             {
                 var objectTypeForLogging = request.Parameters.TryGetValue("objectType", out var objType) ? objType?.ToString() : "unknown";
-                Logger.Error(ex, "Error discovering modification capabilities for object type: {ObjectType}", objectTypeForLogging);
+                Logger.Error(ex, "[DiscoverCapabilities] Error discovering modification capabilities for object type: {ObjectType}", objectTypeForLogging);
                 
                 return ServiceResponse.CreateError($"Failed to discover modification capabilities: {ex.Message}");
             }

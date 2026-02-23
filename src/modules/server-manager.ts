@@ -157,7 +157,13 @@ export class ServerManager {
           
           case "find_xpp_references":
             return await ToolHandlers.findXppReferences(args, requestId);
-          
+
+          case "get_label":
+            return await ToolHandlers.getLabel(args, requestId);
+
+          case "get_labels_batch":
+            return await ToolHandlers.getLabelsBatch(args, requestId);
+
           default:
             throw new McpError(
               ErrorCode.MethodNotFound,

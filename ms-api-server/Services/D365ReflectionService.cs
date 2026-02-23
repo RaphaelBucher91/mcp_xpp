@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -196,7 +196,7 @@ namespace D365MetadataService.Services
 
         private Task<Type> GetD365TypeAsync(string typeName)
         {
-            // 🚀 REFACTORED: Use centralized reflection manager
+            // REFACTORED: Use centralized reflection manager
             var type = _reflectionManager.GetD365Type(typeName);
             return Task.FromResult(type);
         }
@@ -348,7 +348,7 @@ namespace D365MetadataService.Services
             }
             catch (Exception ex)
             {
-                _logger.Warning(ex, "Failed to analyze properties for {TypeName}", d365Type.Name);
+                _logger.Warning(ex, "[ReflectionService] Failed to analyze properties for {TypeName}", d365Type.Name);
             }
 
             return Task.FromResult(propertyRequirements);
@@ -418,13 +418,13 @@ namespace D365MetadataService.Services
         /// </summary>
         private Type DetermineConcreteTypeFromParameters(Type abstractType, Dictionary<string, object> providedParams)
         {
-            _logger.Information("Determining concrete type for abstract type {AbstractType}", abstractType.Name);
+            _logger.Information("[ReflectionService] Determining concrete type for abstract type {AbstractType}", abstractType.Name);
 
             // GENERIC LOGIC: Check for concreteType parameter first (works for ALL abstract types)
             if (providedParams.ContainsKey("concreteType"))
             {
                 var concreteTypeName = providedParams["concreteType"]?.ToString();
-                _logger.Information("Found concreteType parameter: {ConcreteType}", concreteTypeName);
+                _logger.Information("[ReflectionService] Found concreteType parameter: {ConcreteType}", concreteTypeName);
 
                 var typeAssembly = Assembly.GetAssembly(abstractType);
                 var targetType = typeAssembly.GetTypes()
@@ -435,11 +435,11 @@ namespace D365MetadataService.Services
                 
                 if (targetType != null)
                 {
-                    _logger.Information("Using exact concrete type from parameter: {ConcreteType}", targetType.Name);
+                    _logger.Information("[ReflectionService] Using exact concrete type from parameter: {ConcreteType}", targetType.Name);
                     return targetType;
                 }
                 
-                _logger.Warning("Concrete type '{ConcreteType}' specified in parameters not found or not compatible with {AbstractType}", 
+                _logger.Warning("[ReflectionService] Concrete type '{ConcreteType}' specified in parameters not found or not compatible with {AbstractType}", 
                     concreteTypeName, abstractType.Name);
             }
 
@@ -454,12 +454,12 @@ namespace D365MetadataService.Services
 
             if (concreteTypes.Length > 0)
             {
-                _logger.Information("Found {Count} concrete types for {AbstractType}, using first: {ConcreteType}", 
+                _logger.Information("[ReflectionService] Found {Count} concrete types for {AbstractType}, using first: {ConcreteType}", 
                     concreteTypes.Length, abstractType.Name, concreteTypes[0].Name);
                 return concreteTypes[0];
             }
 
-            _logger.Warning("No concrete types found for abstract type {AbstractType}", abstractType.Name);
+            _logger.Warning("[ReflectionService] No concrete types found for abstract type {AbstractType}", abstractType.Name);
             return null;
         }
 
@@ -474,7 +474,7 @@ namespace D365MetadataService.Services
             var parameters = method.GetParameters();
             var parameterValues = new object[parameters.Length];
 
-            _logger.Information("Preparing parameters for method {MethodName} with {ParameterCount} parameters", method.Name, parameters.Length);
+            _logger.Information("[ReflectionService] Preparing parameters for method {MethodName} with {ParameterCount} parameters", method.Name, parameters.Length);
 
             // Get the parameter requirements for this method
             var requirements = await AnalyzeParameterCreationRequirementsAsync(method);
@@ -484,18 +484,18 @@ namespace D365MetadataService.Services
                 var param = parameters[i];
                 var requirement = requirements.FirstOrDefault(r => r.ParameterName == param.Name);
                 
-                _logger.Information("Preparing parameter {Index}: {Name} of type {Type}", i, param.Name, param.ParameterType.Name);
-                _logger.Information("Available provided parameters: {ProvidedParams}", string.Join(", ", providedParams.Keys));
-                _logger.Information("Looking for parameter with name: {ParamName}", param.Name);
+                _logger.Information("[ReflectionService] Preparing parameter {Index}: {Name} of type {Type}", i, param.Name, param.ParameterType.Name);
+                _logger.Information("[ReflectionService] Available provided parameters: {ProvidedParams}", string.Join(", ", providedParams.Keys));
+                _logger.Information("[ReflectionService] Looking for parameter with name: {ParamName}", param.Name);
 
                 try
                 {
                     parameterValues[i] = await CreateParameterUsingRequirementsAsync(param, requirement, providedParams);
-                    _logger.Information("Successfully prepared parameter {Name}: {Value}", param.Name, parameterValues[i]?.GetType().Name ?? "null");
+                    _logger.Information("[ReflectionService] Successfully prepared parameter {Name}: {Value}", param.Name, parameterValues[i]?.GetType().Name ?? "null");
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error(ex, "Failed to prepare parameter {Name} of type {Type}", param.Name, param.ParameterType.Name);
+                    _logger.Error(ex, "[ReflectionService] Failed to prepare parameter {Name} of type {Type}", param.Name, param.ParameterType.Name);
                     
                     // Try fallback approaches
                     if (param.IsOptional)
@@ -526,11 +526,11 @@ namespace D365MetadataService.Services
                 // Look for direct parameter match first
                 if (providedParams.ContainsKey(param.Name))
                 {
-                    _logger.Information("Found parameter {ParamName} in provided params with value: {Value}", param.Name, providedParams[param.Name]);
+                    _logger.Information("[ReflectionService] Found parameter {ParamName} in provided params with value: {Value}", param.Name, providedParams[param.Name]);
                     return ConvertParameterValue(providedParams[param.Name], param.ParameterType);
                 }
                 
-                _logger.Warning("Parameter {ParamName} not found in provided params, using default value", param.Name);
+                _logger.Warning("[ReflectionService] Parameter {ParamName} not found in provided params, using default value", param.Name);
                 return GetDefaultValue(param.ParameterType);
             }
 
@@ -559,48 +559,48 @@ namespace D365MetadataService.Services
             ParameterCreationRequirement requirement, 
             Dictionary<string, object> providedParams)
         {
-            _logger.Information("Creating D365 object {TypeName} using explicit requirements", objectType.Name);
-            _logger.Information("Provided parameters: {Parameters}", string.Join(", ", providedParams.Keys));
+            _logger.Information("[ReflectionService] Creating D365 object {TypeName} using explicit requirements", objectType.Name);
+            _logger.Information("[ReflectionService] Provided parameters: {Parameters}", string.Join(", ", providedParams.Keys));
             
             if (requirement != null)
             {
-                _logger.Information("Requirement specifies {PropertyCount} properties for {ParameterType}", 
+                _logger.Information("[ReflectionService] Requirement specifies {PropertyCount} properties for {ParameterType}", 
                     requirement.RequiredProperties?.Count ?? 0, requirement.ParameterType);
             }
 
             // If the type is abstract, try to determine concrete type from provided parameters
-            _logger.Information("Type check: {TypeName} - IsAbstract: {IsAbstract}, IsInterface: {IsInterface}, IsClass: {IsClass}", 
+            _logger.Information("[ReflectionService] Type check: {TypeName} - IsAbstract: {IsAbstract}, IsInterface: {IsInterface}, IsClass: {IsClass}", 
                 objectType.Name, objectType.IsAbstract, objectType.IsInterface, objectType.IsClass);
                 
             if (objectType.IsAbstract)
             {
-                _logger.Information("Type {TypeName} is abstract, determining concrete type", objectType.Name);
+                _logger.Information("[ReflectionService] Type {TypeName} is abstract, determining concrete type", objectType.Name);
                 var concreteType = DetermineConcreteTypeFromParameters(objectType, providedParams);
                 if (concreteType != null)
                 {
                     objectType = concreteType;
-                    _logger.Information("Resolved abstract type to concrete type: {ConcreteType}", objectType.Name);
+                    _logger.Information("[ReflectionService] Resolved abstract type to concrete type: {ConcreteType}", objectType.Name);
                 }
                 else
                 {
-                    _logger.Warning("Cannot create abstract type {AbstractType} and no concrete type could be determined", objectType.Name);
+                    _logger.Warning("[ReflectionService] Cannot create abstract type {AbstractType} and no concrete type could be determined", objectType.Name);
                     return Task.FromResult<object>(null);
                 }
             }
             else
             {
-                _logger.Information("Type {TypeName} is concrete, proceeding with direct instantiation", objectType.Name);
+                _logger.Information("[ReflectionService] Type {TypeName} is concrete, proceeding with direct instantiation", objectType.Name);
             }
 
             var instance = Activator.CreateInstance(objectType);
             
             if (requirement?.RequiredProperties != null)
             {
-                _logger.Information("Processing {PropertyCount} property requirements", requirement.RequiredProperties.Count);
+                _logger.Information("[ReflectionService] Processing {PropertyCount} property requirements", requirement.RequiredProperties.Count);
                 
                 foreach (var propReq in requirement.RequiredProperties)
                 {
-                    _logger.Information("Checking property requirement: {PropertyName} -> {ExpectedParameter}", 
+                    _logger.Information("[ReflectionService] Checking property requirement: {PropertyName} -> {ExpectedParameter}", 
                         propReq.PropertyName, propReq.ExpectedParameterName);
                         
                     var property = objectType.GetProperty(propReq.PropertyName, BindingFlags.Public | BindingFlags.Instance);
@@ -611,33 +611,33 @@ namespace D365MetadataService.Services
                         {
                             var value = ConvertParameterValue(providedParams[propReq.ExpectedParameterName], property.PropertyType);
                             property.SetValue(instance, value);
-                            _logger.Information("✅ Set property {PropertyName} = {Value} from parameter {ParameterName}", 
+                            _logger.Information("[ReflectionService] Set property {PropertyName} = {Value} from parameter {ParameterName}", 
                                 propReq.PropertyName, value, propReq.ExpectedParameterName);
                         }
                         else if (propReq.IsRequired)
                         {
-                            _logger.Warning("❌ Required property {PropertyName} could not be set - parameter {ParameterName} not provided", 
+                            _logger.Warning("[ReflectionService] Required property {PropertyName} could not be set - parameter {ParameterName} not provided", 
                                 propReq.PropertyName, propReq.ExpectedParameterName);
                         }
                         else
                         {
-                            _logger.Information("⚪ Optional property {PropertyName} skipped - parameter {ParameterName} not provided", 
+                            _logger.Information("[ReflectionService] Optional property {PropertyName} skipped - parameter {ParameterName} not provided", 
                                 propReq.PropertyName, propReq.ExpectedParameterName);
                         }
                     }
                     else
                     {
-                        _logger.Warning("⚠️ Property {PropertyName} not found or not writable on {TypeName}", 
+                        _logger.Warning("[ReflectionService] Property {PropertyName} not found or not writable on {TypeName}", 
                             propReq.PropertyName, objectType.Name);
                     }
                 }
             }
             else
             {
-                _logger.Warning("⚠️ No property requirements provided for {TypeName}", objectType.Name);
+                _logger.Warning("[ReflectionService] No property requirements provided for {TypeName}", objectType.Name);
             }
 
-            _logger.Information("✅ Created D365 object: {TypeName}", objectType.Name);
+            _logger.Information("[ReflectionService] Created D365 object: {TypeName}", objectType.Name);
             return Task.FromResult(instance);
         }
 
@@ -654,9 +654,9 @@ namespace D365MetadataService.Services
                     // Try parsing as string first
                     if (value is string stringValue)
                     {
-                        _logger.Information("Converting string '{StringValue}' to enum {EnumType}", stringValue, targetType.Name);
+                        _logger.Information("[ReflectionService] Converting string '{StringValue}' to enum {EnumType}", stringValue, targetType.Name);
                         var enumValue = Enum.Parse(targetType, stringValue, true);
-                        _logger.Information("Successfully converted string to enum: {EnumValue}", enumValue);
+                        _logger.Information("[ReflectionService] Successfully converted string to enum: {EnumValue}", enumValue);
                         return enumValue;
                     }
                     
@@ -664,28 +664,28 @@ namespace D365MetadataService.Services
                     if (value is int intValue || value is long longValue)
                     {
                         var enumIntValue = Convert.ToInt32(value);
-                        _logger.Information("Converting integer {IntValue} to enum {EnumType}", enumIntValue, targetType.Name);
+                        _logger.Information("[ReflectionService] Converting integer {IntValue} to enum {EnumType}", enumIntValue, targetType.Name);
                         
                         if (Enum.IsDefined(targetType, enumIntValue))
                         {
                             var enumValue = Enum.ToObject(targetType, enumIntValue);
-                            _logger.Information("Successfully converted integer to enum: {EnumValue}", enumValue);
+                            _logger.Information("[ReflectionService] Successfully converted integer to enum: {EnumValue}", enumValue);
                             return enumValue;
                         }
                         else
                         {
-                            _logger.Warning("Integer value {IntValue} is not valid for enum {EnumType}", enumIntValue, targetType.Name);
+                            _logger.Warning("[ReflectionService] Integer value {IntValue} is not valid for enum {EnumType}", enumIntValue, targetType.Name);
                         }
                     }
                     
                     // Try direct conversion
                     var convertedEnum = Enum.ToObject(targetType, value);
-                    _logger.Information("Successfully converted {Value} to enum: {EnumValue}", value, convertedEnum);
+                    _logger.Information("[ReflectionService] Successfully converted {Value} to enum: {EnumValue}", value, convertedEnum);
                     return convertedEnum;
                 }
                 catch (Exception ex)
                 {
-                    _logger.Warning(ex, "Failed to convert {Value} to enum {EnumType}, using default", value, targetType.Name);
+                    _logger.Warning(ex, "[ReflectionService] Failed to convert {Value} to enum {EnumType}, using default", value, targetType.Name);
                     return GetDefaultValue(targetType);
                 }
             }
@@ -715,7 +715,7 @@ namespace D365MetadataService.Services
         {
             try
             {
-                // 🚀 REFACTORED: Use centralized reflection manager
+                // REFACTORED: Use centralized reflection manager
                 var supportedTypes = _reflectionManager.GetSupportedObjectTypes();
                 
                 var availableTypes = supportedTypes.Select(typeName =>
@@ -735,7 +735,7 @@ namespace D365MetadataService.Services
             }
             catch (Exception ex)
             {
-                _logger.Warning(ex, "Error discovering available types");
+                _logger.Warning(ex, "[ReflectionService] Error discovering available types");
                 return Task.FromResult(new List<Models.TypeInfo>());
             }
         }
@@ -761,7 +761,7 @@ namespace D365MetadataService.Services
 
         private Type GetTypeFromCache(string typeName)
         {
-            // 🚀 REFACTORED: Use centralized reflection manager
+            // REFACTORED: Use centralized reflection manager
             return _reflectionManager.GetD365Type(typeName);
         }
 
@@ -803,13 +803,13 @@ namespace D365MetadataService.Services
                 // Prepare method parameters using general reflection-based approach
                 object[] methodParams = await PrepareParametersAsync(method, parameters, targetObject);
                 
-                _logger.Information("Prepared method parameters for {MethodName}: {ParameterCount} parameters", methodName, methodParams?.Length ?? 0);
+                _logger.Information("[ReflectionService] Prepared method parameters for {MethodName}: {ParameterCount} parameters", methodName, methodParams?.Length ?? 0);
                 if (methodParams != null)
                 {
                     for (int i = 0; i < methodParams.Length; i++)
                     {
                         var param = methodParams[i];
-                        _logger.Information("Parameter {Index}: Type={Type}, Value={Value}", i, param?.GetType().Name ?? "null", param?.ToString() ?? "null");
+                        _logger.Information("[ReflectionService] Parameter {Index}: Type={Type}, Value={Value}", i, param?.GetType().Name ?? "null", param?.ToString() ?? "null");
                     }
                 }
 
@@ -833,7 +833,7 @@ namespace D365MetadataService.Services
                     else
                     {
                         result.Message = $"Successfully executed {methodName} on {objectType}:{objectName} but failed to save changes to metadata store";
-                        _logger.Warning("Method execution succeeded but save failed for {ObjectType}:{ObjectName}", objectType, objectName);
+                        _logger.Warning("[ReflectionService] Method execution succeeded but save failed for {ObjectType}:{ObjectName}", objectType, objectName);
                     }
                     
                     result.ExecutionTime = DateTime.UtcNow - result.StartTime;
@@ -854,7 +854,7 @@ namespace D365MetadataService.Services
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "General error in ExecuteObjectModificationAsync for {MethodName} on {ObjectType}:{ObjectName}", methodName, objectType, objectName);
+                _logger.Error(ex, "[ReflectionService] General error in ExecuteObjectModificationAsync for {MethodName} on {ObjectType}:{ObjectName}", methodName, objectType, objectName);
                 result.Success = false;
                 result.Error = $"Execution error: {ex.Message}";
                 result.ExecutionTime = DateTime.UtcNow - result.StartTime;
@@ -869,25 +869,25 @@ namespace D365MetadataService.Services
         {
             try
             {
-                _logger.Information("Saving modified object: {ObjectType}:{ObjectName} to model: {Model}", objectType, objectName, model ?? "(auto-detect)");
+                _logger.Information("[ReflectionService] Saving modified object: {ObjectType}:{ObjectName} to model: {Model}", objectType, objectName, model ?? "(auto-detect)");
                 
                 // Use the D365ObjectFactory to save the object with model info
                 var saveResult = await _objectFactory.SaveObjectAsync(objectType, objectName, modifiedObject, model);
                 
                 if (saveResult)
                 {
-                    _logger.Information("Successfully saved {ObjectType}:{ObjectName} to metadata store", objectType, objectName);
+                    _logger.Information("[ReflectionService] Successfully saved {ObjectType}:{ObjectName} to metadata store", objectType, objectName);
                     return true;
                 }
                 else
                 {
-                    _logger.Warning("Failed to save {ObjectType}:{ObjectName} to metadata store", objectType, objectName);
+                    _logger.Warning("[ReflectionService] Failed to save {ObjectType}:{ObjectName} to metadata store", objectType, objectName);
                     return false;
                 }
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Error saving modified object {ObjectType}:{ObjectName}", objectType, objectName);
+                _logger.Error(ex, "[ReflectionService] Error saving modified object {ObjectType}:{ObjectName}", objectType, objectName);
                 return false; // Don't throw, just return false to indicate failure
             }
         }
@@ -902,7 +902,7 @@ namespace D365MetadataService.Services
             string methodName, 
             Dictionary<string, object> providedParameters)
         {
-            _logger.Information("Validating parameters for {MethodName} on {ObjectType}:{ObjectName}", 
+            _logger.Information("[ReflectionService] Validating parameters for {MethodName} on {ObjectType}:{ObjectName}", 
                 methodName, objectType, objectName);
 
             try
@@ -931,7 +931,7 @@ namespace D365MetadataService.Services
 
                 // Analyze parameter requirements for the method
                 var parameterRequirements = await AnalyzeParameterCreationRequirementsAsync(method);
-                _logger.Information("Found {RequirementCount} parameter requirements for method {MethodName}", 
+                _logger.Information("[ReflectionService] Found {RequirementCount} parameter requirements for method {MethodName}", 
                     parameterRequirements.Count, methodName);
 
                 // Validate each parameter requirement
@@ -939,7 +939,7 @@ namespace D365MetadataService.Services
                 {
                     if (requirement.RequiredProperties?.Any() == true)
                     {
-                        _logger.Information("Validating parameter {ParameterName} of type {ParameterType} with {PropertyCount} property requirements",
+                        _logger.Information("[ReflectionService] Validating parameter {ParameterName} of type {ParameterType} with {PropertyCount} property requirements",
                             requirement.ParameterName, requirement.ParameterType, requirement.RequiredProperties.Count);
 
                         // This parameter requires object creation - validate property parameters
@@ -956,14 +956,14 @@ namespace D365MetadataService.Services
                     }
                 }
 
-                _logger.Information("✅ Parameter validation successful for {MethodName} on {ObjectType}:{ObjectName}", 
+                _logger.Information("[ReflectionService] Parameter validation successful for {MethodName} on {ObjectType}:{ObjectName}", 
                     methodName, objectType, objectName);
 
                 return ParameterValidationResult.Success();
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Error during parameter validation for {MethodName} on {ObjectType}:{ObjectName}", 
+                _logger.Error(ex, "[ReflectionService] Error during parameter validation for {MethodName} on {ObjectType}:{ObjectName}", 
                     methodName, objectType, objectName);
                 
                 return ParameterValidationResult.Failure(
@@ -1045,17 +1045,17 @@ namespace D365MetadataService.Services
 
             if (result.UnknownParameters.Any())
             {
-                message += $"❌ Unknown parameters provided: {string.Join(", ", result.UnknownParameters)}\n";
+                message += $"Unknown parameters provided: {string.Join(", ", result.UnknownParameters)}\n";
             }
 
             if (result.MissingRequiredParameters.Any())
             {
-                message += $"❌ Missing required parameters: {string.Join(", ", result.MissingRequiredParameters)}\n";
+                message += $"Missing required parameters: {string.Join(", ", result.MissingRequiredParameters)}\n";
             }
 
             if (result.SuggestedParameters.Any())
             {
-                message += $"✅ Expected parameters for {requirement.ParameterType}:\n";
+                message += $"Expected parameters for {requirement.ParameterType}:\n";
                 foreach (var propReq in requirement.RequiredProperties)
                 {
                     var requiredMarker = propReq.IsRequired ? "[REQUIRED]" : "[OPTIONAL]";
@@ -1063,7 +1063,7 @@ namespace D365MetadataService.Services
                 }
             }
 
-            message += $"\n💡 Use discover_modification_capabilities tool to get exact parameter requirements:\n";
+            message += $"\nUse discover_modification_capabilities tool to get exact parameter requirements:\n";
             message += $"   mcp_mcp-xpp-serve_discover_modification_capabilities({{\n";
             message += $"     \"objectType\": \"{requirement.ParameterType}\"\n";
             message += $"   }})";

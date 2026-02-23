@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -48,10 +48,10 @@ namespace D365MetadataService.Services
                 var providerFactory = new MetadataProviderFactory();
                 
                 _customMetadataProvider = providerFactory.CreateDiskProvider(config.CustomMetadataPath);
-                _logger.Information("✅ Custom metadata provider initialized: {Path}", config.CustomMetadataPath);
+                _logger.Information("[ObjectFactory] Custom metadata provider initialized: {Path}", config.CustomMetadataPath);
                 
                 _standardMetadataProvider = providerFactory.CreateDiskProvider(config.PackagesLocalDirectory);
-                _logger.Information("✅ Standard metadata provider initialized: {Path}", config.PackagesLocalDirectory);
+                _logger.Information("[ObjectFactory] Standard metadata provider initialized: {Path}", config.PackagesLocalDirectory);
 
                 // Set custom as primary for backward compatibility
                 _metadataProvider = _customMetadataProvider;
@@ -59,11 +59,11 @@ namespace D365MetadataService.Services
                 // Initialize reflection caches
                 InitializeReflectionCaches();
 
-                _logger.Information("🎯 DUAL-PROVIDER D365 Object Factory initialized with {TypeCount} cached types", _axTypeCache.Count);
+                _logger.Information("[ObjectFactory] DUAL-PROVIDER D365 Object Factory initialized with {TypeCount} cached types", _axTypeCache.Count);
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to initialize Dynamic D365 Object Factory");
+                _logger.Error(ex, "[ObjectFactory] Failed to initialize Dynamic D365 Object Factory");
                 throw;
             }
         }
@@ -75,7 +75,7 @@ namespace D365MetadataService.Services
         /// </summary>
         private void InitializeReflectionCaches()
         {
-            _logger.Information("Initializing reflection caches...");
+            _logger.Information("[ObjectFactory] Initializing reflection caches...");
 
             // Cache all Ax types from Microsoft.Dynamics.AX.Metadata.MetaModel namespace using centralized reflection manager
             var metaModelAssembly = _reflectionManager.GetD365MetadataAssembly();
@@ -90,7 +90,7 @@ namespace D365MetadataService.Services
                 _axTypeCache[type.Name] = type;
             }
 
-            _logger.Information("Cached {Count} Ax types", _axTypeCache.Count);
+            _logger.Information("[ObjectFactory] Cached {Count} Ax types", _axTypeCache.Count);
 
             // Cache provider properties with Create methods
             // BREAKTHROUGH: Based on logs, provider DOES have direct collection properties:
@@ -100,7 +100,7 @@ namespace D365MetadataService.Services
             var providerType = providerInstance.GetType(); // Use actual provider instance type, not interface
             var providerProperties = providerType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
             
-            _logger.Information("Exploring {Count} properties on provider instance of type: {ProviderType}", 
+            _logger.Information("[ObjectFactory] Exploring {Count} properties on provider instance of type: {ProviderType}", 
                 providerProperties.Length, providerType.FullName);
 
             foreach (var prop in providerProperties)
@@ -114,21 +114,21 @@ namespace D365MetadataService.Services
                     _providerPropertyCache[prop.Name] = prop;
                     _createMethodCache[prop.Name] = createMethods.First();
                     
-                    _logger.Information("Cached provider property: {PropertyName} with Create method (declaring type: {PropertyType})", 
+                    _logger.Information("[ObjectFactory] Cached provider property: {PropertyName} with Create method (declaring type: {PropertyType})", 
                         prop.Name, prop.PropertyType.Name);
                 }
                 else
                 {
-                    _logger.Debug("Provider property {PropertyName} has no Create method with 2 parameters (type: {PropertyType})", 
+                    _logger.Debug("[ObjectFactory] Provider property {PropertyName} has no Create method with 2 parameters (type: {PropertyType})", 
                         prop.Name, prop.PropertyType.Name);
                 }
             }
 
-            _logger.Information("Reflection caches initialized: {AxTypes} types, {ProviderProperties} provider properties",
+            _logger.Information("[ObjectFactory] Reflection caches initialized: {AxTypes} types, {ProviderProperties} provider properties",
                 _axTypeCache.Count, _providerPropertyCache.Count);
 
             // Log the available provider properties for debugging
-            _logger.Information("Available provider properties: {Properties}", 
+            _logger.Information("[ObjectFactory] Available provider properties: {Properties}", 
                 string.Join(", ", _providerPropertyCache.Keys));
         }
 
@@ -147,7 +147,7 @@ namespace D365MetadataService.Services
         {
             try
             {
-                _logger.Information("Creating {ObjectType} dynamically with parameters: {@Parameters}", objectType, parameters);
+                _logger.Information("[ObjectFactory] Creating {ObjectType} dynamically with parameters: {@Parameters}", objectType, parameters);
 
                 // 1. Validate and get the Ax type
                 if (!_axTypeCache.TryGetValue(objectType, out var axType))
@@ -162,7 +162,7 @@ namespace D365MetadataService.Services
 
                 // 2. Create instance of the Ax type
                 var axInstance = Activator.CreateInstance(axType);
-                _logger.Information("Created instance of {ObjectType}", objectType);
+                _logger.Information("[ObjectFactory] Created instance of {ObjectType}", objectType);
 
                 // 3. Set properties dynamically
                 SetObjectPropertiesDynamically(axInstance, axType, parameters);
@@ -182,7 +182,7 @@ namespace D365MetadataService.Services
 
                 // 5. Get the provider collection using indexer parameters
                 // The Item property is an indexer that requires the AX object type as parameter
-                _logger.Information("Accessing Item[{AxType}] indexer property", axType);
+                _logger.Information("[ObjectFactory] Accessing Item[{AxType}] indexer property", axType);
                 var providerCollection = providerProperty.GetValue(_metadataProvider, new object[] { axType });
                 
                 if (providerCollection == null)
@@ -202,33 +202,33 @@ namespace D365MetadataService.Services
                 var modelSaveInfo = CreateModelSaveInfo(model ?? "ApplicationSuite");
 
                 // 7. Deep type analysis before invoking Create method
-                _logger.Information("=== DEEP TYPE ANALYSIS ===");
-                _logger.Information("Target method: {MethodName}", createMethod.Name);
-                _logger.Information("Method declaring type: {DeclaringType}", createMethod.DeclaringType.FullName);
-                _logger.Information("Provider collection type: {ProviderType}", providerCollection.GetType().FullName);
+                _logger.Information("[ObjectFactory] === DEEP TYPE ANALYSIS ===");
+                _logger.Information("[ObjectFactory] Target method: {MethodName}", createMethod.Name);
+                _logger.Information("[ObjectFactory] Method declaring type: {DeclaringType}", createMethod.DeclaringType.FullName);
+                _logger.Information("[ObjectFactory] Provider collection type: {ProviderType}", providerCollection.GetType().FullName);
                 
                 var methodParams = createMethod.GetParameters();
-                _logger.Information("Method expects {ParamCount} parameters:", methodParams.Length);
+                _logger.Information("[ObjectFactory] Method expects {ParamCount} parameters:", methodParams.Length);
                 for (int i = 0; i < methodParams.Length; i++)
                 {
                     var param = methodParams[i];
-                    _logger.Information("  [{Index}] {ParamName}: {ParamType}", i, param.Name, param.ParameterType.FullName);
+                    _logger.Information("[ObjectFactory]   [{Index}] {ParamName}: {ParamType}", i, param.Name, param.ParameterType.FullName);
                 }
                 
-                _logger.Information("Actual parameters being passed:");
-                _logger.Information("  [0] axInstance: {AxType} (value: {AxValue})", axInstance.GetType().FullName, axInstance);
-                _logger.Information("  [1] modelSaveInfo: {ModelType} (value: {ModelValue})", modelSaveInfo.GetType().FullName, modelSaveInfo);
+                _logger.Information("[ObjectFactory] Actual parameters being passed:");
+                _logger.Information("[ObjectFactory]   [0] axInstance: {AxType} (value: {AxValue})", axInstance.GetType().FullName, axInstance);
+                _logger.Information("[ObjectFactory]   [1] modelSaveInfo: {ModelType} (value: {ModelValue})", modelSaveInfo.GetType().FullName, modelSaveInfo);
                 
                 // Check parameter type compatibility
                 bool param0Compatible = methodParams[0].ParameterType.IsAssignableFrom(axInstance.GetType());
                 bool param1Compatible = methodParams[1].ParameterType.IsAssignableFrom(modelSaveInfo.GetType());
-                _logger.Information("Parameter compatibility: param0={Param0}, param1={Param1}", param0Compatible, param1Compatible);
+                _logger.Information("[ObjectFactory] Parameter compatibility: param0={Param0}, param1={Param1}", param0Compatible, param1Compatible);
                 
                 // 8. Invoke the Create method
-                _logger.Information("Invoking {ProviderProperty}.Create() for {ObjectType}", providerProperty.Name, objectType);
+                _logger.Information("[ObjectFactory] Invoking {ProviderProperty}.Create() for {ObjectType}", providerProperty.Name, objectType);
                 createMethod.Invoke(providerCollection, new object[] { axInstance, modelSaveInfo });
 
-                _logger.Information("Successfully created {ObjectType} using dynamic factory", objectType);
+                _logger.Information("[ObjectFactory] Successfully created {ObjectType} using dynamic factory", objectType);
 
                 return new ObjectCreationResult
                 {
@@ -245,7 +245,7 @@ namespace D365MetadataService.Services
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to create {ObjectType} dynamically", objectType);
+                _logger.Error(ex, "[ObjectFactory] Failed to create {ObjectType} dynamically", objectType);
                 return new ObjectCreationResult
                 {
                     Success = false,
@@ -262,22 +262,22 @@ namespace D365MetadataService.Services
         {
             var properties = axType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
-            _logger.Information("=== PARAMETER MAPPING DEBUG === for {ObjectType}", axType.Name);
-            _logger.Information("Received parameters: {Parameters}", string.Join(", ", parameters.Select(kvp => $"{kvp.Key}={kvp.Value}")));
+            _logger.Information("[ObjectFactory] === PARAMETER MAPPING DEBUG === for {ObjectType}", axType.Name);
+            _logger.Information("[ObjectFactory] Received parameters: {Parameters}", string.Join(", ", parameters.Select(kvp => $"{kvp.Key}={kvp.Value}")));
 
             // Special handling for ObjectName -> Name mapping
             if (parameters.ContainsKey("ObjectName") && !parameters.ContainsKey("Name"))
             {
                 parameters["Name"] = parameters["ObjectName"];
-                _logger.Information("✅ Mapped ObjectName '{ObjectName}' to Name property", parameters["ObjectName"]);
+                _logger.Information("[ObjectFactory] Mapped ObjectName '{ObjectName}' to Name property", parameters["ObjectName"]);
             }
             else if (parameters.ContainsKey("ObjectName") && parameters.ContainsKey("Name"))
             {
-                _logger.Information("⚠️ Both ObjectName and Name exist. Name='{Name}', ObjectName='{ObjectName}'", parameters["Name"], parameters["ObjectName"]);
+                _logger.Information("[ObjectFactory] Both ObjectName and Name exist. Name='{Name}', ObjectName='{ObjectName}'", parameters["Name"], parameters["ObjectName"]);
             }
             else if (!parameters.ContainsKey("ObjectName") && !parameters.ContainsKey("Name"))
             {
-                _logger.Error("❌ Neither ObjectName nor Name parameter found!");
+                _logger.Error("[ObjectFactory] Neither ObjectName nor Name parameter found!");
             }
 
             foreach (var kvp in parameters)
@@ -289,7 +289,7 @@ namespace D365MetadataService.Services
                     var nonAxFormProperties = new[] { "Pattern", "PatternVersion", "Layer" };
                     if (nonAxFormProperties.Contains(kvp.Key, StringComparer.OrdinalIgnoreCase))
                     {
-                        _logger.Debug("Skipping {PropertyName} - handled elsewhere in form creation process", kvp.Key);
+                        _logger.Debug("[ObjectFactory] Skipping {PropertyName} - handled elsewhere in form creation process", kvp.Key);
                         continue;
                     }
                 }
@@ -303,16 +303,16 @@ namespace D365MetadataService.Services
                     {
                         var value = ConvertValue(kvp.Value, property.PropertyType);
                         property.SetValue(axInstance, value);
-                        _logger.Information("✅ Set {PropertyName} = '{Value}' on {ObjectType}", property.Name, value, axType.Name);
+                        _logger.Information("[ObjectFactory] Set {PropertyName} = '{Value}' on {ObjectType}", property.Name, value, axType.Name);
                     }
                     catch (Exception ex)
                     {
-                        _logger.Warning(ex, "❌ Failed to set property {PropertyName}", property.Name);
+                        _logger.Warning(ex, "[ObjectFactory] Failed to set property {PropertyName}", property.Name);
                     }
                 }
                 else
                 {
-                    _logger.Warning("Property {PropertyName} not found or not writable on {ObjectType}. Available properties: {Properties}", 
+                    _logger.Warning("[ObjectFactory] Property {PropertyName} not found or not writable on {ObjectType}. Available properties: {Properties}", 
                         kvp.Key, axType.Name, string.Join(", ", properties.Where(p => p.CanWrite).Select(p => p.Name).Take(10)));
                 }
             }
@@ -323,25 +323,14 @@ namespace D365MetadataService.Services
         /// </summary>
         private PropertyInfo? FindProviderProperty(string objectType)
         {
-            _logger.Information("Finding provider property for object type: {ObjectType}", objectType);
-            _logger.Information("Provider property cache has {Count} entries", _providerPropertyCache.Count);
-            
-            // BREAKTHROUGH DISCOVERY: All object types use the same "Item" property!
-            // The provider only has one collection property with Create methods: Item
-            
-            foreach (var kvp in _providerPropertyCache)
-            {
-                _logger.Information("Cache entry: Key='{Key}', Property='{PropertyName}'", kvp.Key, kvp.Value?.Name ?? "null");
-            }
-            
+            // All object types use the same "Item" property
             if (_providerPropertyCache.TryGetValue("Item", out var itemProperty))
             {
-                _logger.Information("Using universal 'Item' provider property for {ObjectType}", objectType);
                 return itemProperty;
             }
             
             var allCachedProps = string.Join(", ", _providerPropertyCache.Keys.OrderBy(x => x));
-            _logger.Error("'Item' provider property not found. Available cached properties: {Properties}", allCachedProps);
+            _logger.Error("[ObjectFactory] 'Item' provider property not found for {ObjectType}. Available cached properties: {Properties}", objectType, allCachedProps);
                 
             return null;
         }
@@ -370,7 +359,7 @@ namespace D365MetadataService.Services
                     }
                     catch (ArgumentException)
                     {
-                        _logger.Warning("Failed to parse '{Value}' as {EnumType}. Available values: {Values}", 
+                        _logger.Warning("[ObjectFactory] Failed to parse '{Value}' as {EnumType}. Available values: {Values}", 
                             stringValue, targetType.Name, string.Join(", ", Enum.GetNames(targetType)));
                         throw;
                     }
@@ -399,7 +388,7 @@ namespace D365MetadataService.Services
                             catch (ArgumentException) { continue; }
                         }
                         
-                        _logger.Warning("Failed to parse '{Value}' as {EnumType}. Available values: {Values}", 
+                        _logger.Warning("[ObjectFactory] Failed to parse '{Value}' as {EnumType}. Available values: {Values}", 
                             stringValue, targetType.Name, string.Join(", ", Enum.GetNames(targetType)));
                         throw;
                     }
@@ -423,7 +412,7 @@ namespace D365MetadataService.Services
         /// </summary>
         private ModelSaveInfo CreateModelSaveInfo(string modelName)
         {
-            _logger.Information("Creating ModelInfo for model: {Model} using exact type discovered", modelName);
+            _logger.Information("[ObjectFactory] Creating ModelInfo for model: {Model} using exact type discovered", modelName);
 
             try
             {
@@ -443,11 +432,11 @@ namespace D365MetadataService.Services
                             modelSaveInfo.Layer = modelInfo.Layer;
                             modelSaveInfo.Name = modelInfo.Name;
                             
-                            _logger.Information("ModelSaveInfo configured from Microsoft API for '{Model}' model", modelName);
+                            _logger.Information("[ObjectFactory] ModelSaveInfo configured from Microsoft API for '{Model}' model", modelName);
                         }
                         else
                         {
-                            _logger.Warning("Could not read model '{Model}' from Microsoft API, using fallback values", modelName);
+                            _logger.Warning("[ObjectFactory] Could not read model '{Model}' from Microsoft API, using fallback values", modelName);
                             // Fallback to default values
                             modelSaveInfo.Id = 1;
                             modelSaveInfo.Layer = 14;
@@ -470,14 +459,14 @@ namespace D365MetadataService.Services
                     modelSaveInfo.Layer = 14; // usr layer as Int32
                     modelSaveInfo.Id = 1;
                     
-                    _logger.Information("ModelSaveInfo configured with default values for model: {Model}", modelName);
+                    _logger.Information("[ObjectFactory] ModelSaveInfo configured with default values for model: {Model}", modelName);
                 }
 
                 return modelSaveInfo;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to create ModelSaveInfo for model: {Model}", modelName);
+                _logger.Error(ex, "[ObjectFactory] Failed to create ModelSaveInfo for model: {Model}", modelName);
                 throw;
             }
         }
@@ -552,7 +541,7 @@ namespace D365MetadataService.Services
         {
             try
             {
-                _logger.Information("Getting all models information from Microsoft API using Dynamic Factory");
+                _logger.Information("[ObjectFactory] Getting all models information from Microsoft API using Dynamic Factory");
 
                 var result = new Dictionary<string, object>();
                 var models = new List<Dictionary<string, object>>();
@@ -560,12 +549,12 @@ namespace D365MetadataService.Services
                 // Get models from the metadata provider using ModelManifest
                 if (_metadataProvider?.ModelManifest != null)
                 {
-                    _logger.Information("Getting models from MetadataProvider.ModelManifest");
+                    _logger.Information("[ObjectFactory] Getting models from MetadataProvider.ModelManifest");
                     
                     try
                     {
                         var modelList = _metadataProvider.ModelManifest.ListModels();
-                        _logger.Information("Found {Count} models using ListModels()", modelList?.Count ?? 0);
+                        _logger.Information("[ObjectFactory] Found {Count} models using ListModels()", modelList?.Count ?? 0);
 
                         if (modelList != null)
                         {
@@ -573,7 +562,7 @@ namespace D365MetadataService.Services
                             {
                                 try
                                 {
-                                    _logger.Information("Processing model: {ModelName}", modelName);
+                                    _logger.Information("[ObjectFactory] Processing model: {ModelName}", modelName);
                                     
                                     var modelInfo = _metadataProvider.ModelManifest.Read(modelName);
                                     if (modelInfo != null)
@@ -600,16 +589,16 @@ namespace D365MetadataService.Services
                                         }
                                         catch (Exception propEx)
                                         {
-                                            _logger.Warning("Error getting additional properties for model {ModelName}: {Error}", modelName, propEx.Message);
+                                            _logger.Warning("[ObjectFactory] Error getting additional properties for model {ModelName}: {Error}", modelName, propEx.Message);
                                         }
 
                                         models.Add(modelData);
-                                        _logger.Information("Added model: {Name} (ID: {Id}, Layer: {Layer}, Key: {Key})", 
+                                        _logger.Information("[ObjectFactory] Added model: {Name} (ID: {Id}, Layer: {Layer}, Key: {Key})", 
                                             modelInfo.Name, modelInfo.Id, modelInfo.Layer, modelInfo.Key);
                                     }
                                     else
                                     {
-                                        _logger.Warning("Could not read model info for: {ModelName}", modelName);
+                                        _logger.Warning("[ObjectFactory] Could not read model info for: {ModelName}", modelName);
                                         models.Add(new Dictionary<string, object>
                                         {
                                             ["Name"] = modelName,
@@ -620,7 +609,7 @@ namespace D365MetadataService.Services
                                 }
                                 catch (Exception ex)
                                 {
-                                    _logger.Error(ex, "Error processing model {ModelName}: {Message}", modelName, ex.Message);
+                                    _logger.Error(ex, "[ObjectFactory] Error processing model {ModelName}: {Message}", modelName, ex.Message);
                                     models.Add(new Dictionary<string, object>
                                     {
                                         ["Name"] = modelName,
@@ -638,19 +627,19 @@ namespace D365MetadataService.Services
                 }
                 else
                 {
-                    _logger.Warning("MetadataProvider.ModelManifest is null");
+                    _logger.Warning("[ObjectFactory] MetadataProvider.ModelManifest is null");
                 }
 
                 result["models"] = models;
                 result["totalCount"] = models.Count;
                 result["source"] = "DynamicD365ObjectFactory";
 
-                _logger.Information("Successfully retrieved {Count} models using Dynamic Factory", models.Count);
+                _logger.Information("[ObjectFactory] Successfully retrieved {Count} models using Dynamic Factory", models.Count);
                 return result;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to get models information: {Message}", ex.Message);
+                _logger.Error(ex, "[ObjectFactory] Failed to get models information: {Message}", ex.Message);
                 return new Dictionary<string, object>
                 {
                     ["error"] = ex.Message,
@@ -671,42 +660,40 @@ namespace D365MetadataService.Services
             {
                 if (string.IsNullOrWhiteSpace(objectType) || string.IsNullOrWhiteSpace(objectName))
                 {
-                    _logger.Warning("Invalid parameters for GetExistingObject: objectType={ObjectType}, objectName={ObjectName}", objectType, objectName);
+                    _logger.Warning("[ObjectFactory] Invalid parameters for GetExistingObject: objectType={ObjectType}, objectName={ObjectName}", objectType, objectName);
                     return null;
                 }
 
-                _logger.Information("🔍 DUAL-PROVIDER: Retrieving {ObjectType}:{ObjectName}", objectType, objectName);
+                _logger.Debug("[ObjectFactory] Retrieving {ObjectType}:{ObjectName}", objectType, objectName);
 
                 // Get the Ax type
                 if (!_axTypeCache.TryGetValue(objectType, out var axType))
                 {
-                    _logger.Warning("Object type {ObjectType} not found in cache", objectType);
+                    _logger.Warning("[ObjectFactory] Object type {ObjectType} not found in cache", objectType);
                     return null;
                 }
 
                 // DUAL-PROVIDER LOGIC: Try custom provider first, then standard provider
-                _logger.Information("🔄 Trying CUSTOM provider first for {ObjectType}:{ObjectName}", objectType, objectName);
                 var result = TryGetObjectFromProvider(_customMetadataProvider, "Custom", objectType, objectName, axType);
                 if (result != null)
                 {
-                    _logger.Information("✅ Found {ObjectType}:{ObjectName} in CUSTOM provider", objectType, objectName);
+                    _logger.Information("[ObjectFactory] Retrieved {ObjectType}:{ObjectName} from Custom provider", objectType, objectName);
                     return result;
                 }
 
-                _logger.Information("🔄 Custom provider failed, trying STANDARD provider for {ObjectType}:{ObjectName}", objectType, objectName);
                 result = TryGetObjectFromProvider(_standardMetadataProvider, "Standard", objectType, objectName, axType);
                 if (result != null)
                 {
-                    _logger.Information("✅ Found {ObjectType}:{ObjectName} in STANDARD provider", objectType, objectName);
+                    _logger.Information("[ObjectFactory] Retrieved {ObjectType}:{ObjectName} from Standard provider", objectType, objectName);
                     return result;
                 }
 
-                _logger.Warning("❌ Object {ObjectType}:{ObjectName} not found in either provider", objectType, objectName);
+                _logger.Warning("[ObjectFactory] Object {ObjectType}:{ObjectName} not found in any provider", objectType, objectName);
                 return null;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to retrieve existing object {ObjectType}:{ObjectName}", objectType, objectName);
+                _logger.Error(ex, "[ObjectFactory] Failed to retrieve existing object {ObjectType}:{ObjectName}", objectType, objectName);
                 return null;
             }
         }
@@ -721,45 +708,27 @@ namespace D365MetadataService.Services
                 // Find the provider property for this object type
                 var providerProperty = FindProviderProperty(objectType);
                 if (providerProperty == null)
-                {
-                    _logger.Debug("Provider property not found for {ObjectType} in {ProviderName}", objectType, providerName);
                     return null;
-                }
 
                 // Access the provider collection (e.g., Item[AxTable])
                 var providerCollection = providerProperty.GetValue(provider, new object[] { axType });
                 if (providerCollection == null)
-                {
-                    _logger.Debug("Provider collection is null for {ObjectType} in {ProviderName}", objectType, providerName);
                     return null;
-                }
 
                 // Look for read methods dynamically
                 var providerType = providerCollection.GetType();
                 var readMethod = GetReadMethodDynamically(providerType);
                 if (readMethod == null)
-                {
-                    _logger.Debug("No Read method found for {ObjectType} in {ProviderName}", objectType, providerName);
                     return null;
-                }
 
                 // Invoke the Read/Get method
                 var result = readMethod.Invoke(providerCollection, new object[] { objectName });
-                
-                if (result != null)
-                {
-                    _logger.Information("Successfully retrieved {ObjectType}:{ObjectName} from {ProviderName}", objectType, objectName, providerName);
-                }
-                else
-                {
-                    _logger.Debug("Object {ObjectType}:{ObjectName} not found in {ProviderName} metadata store", objectType, objectName, providerName);
-                }
 
                 return result;
             }
             catch (Exception ex)
             {
-                _logger.Debug(ex, "Exception trying {ProviderName} provider for {ObjectType}:{ObjectName}", providerName, objectType, objectName);
+                _logger.Debug(ex, "[ObjectFactory] Exception trying {ProviderName} provider for {ObjectType}:{ObjectName}", providerName, objectType, objectName);
                 return null;
             }
         }
@@ -800,7 +769,7 @@ namespace D365MetadataService.Services
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Error getting parameter schemas dynamically");
+                _logger.Error(ex, "[ObjectFactory] Error getting parameter schemas dynamically");
                 return new { Error = "Failed to get dynamic parameter schemas", Details = ex.Message };
             }
         }
@@ -814,18 +783,18 @@ namespace D365MetadataService.Services
             {
                 if (string.IsNullOrWhiteSpace(objectType) || string.IsNullOrWhiteSpace(objectName) || modifiedObject == null)
                 {
-                    _logger.Warning("Invalid parameters for SaveObjectAsync: objectType={ObjectType}, objectName={ObjectName}, object is null={IsNull}", 
+                    _logger.Warning("[ObjectFactory] Invalid parameters for SaveObjectAsync: objectType={ObjectType}, objectName={ObjectName}, object is null={IsNull}", 
                         objectType, objectName, modifiedObject == null);
                     return Task.FromResult(false);
                 }
 
-                _logger.Information("Saving modified object: {ObjectType}:{ObjectName} to model: {Model}", objectType, objectName, model ?? "(auto-detect)");
+                _logger.Information("[ObjectFactory] Saving modified object: {ObjectType}:{ObjectName} to model: {Model}", objectType, objectName, model ?? "(auto-detect)");
 
                 // First, try to save using the provider itself (not the collection)
                 var providerType = _metadataProvider.GetType();
                 var providerMethods = providerType.GetMethods(BindingFlags.Public | BindingFlags.Instance);
                 
-                _logger.Information("Available methods on provider for {ObjectType}: {Methods}", 
+                _logger.Information("[ObjectFactory] Available methods on provider for {ObjectType}: {Methods}", 
                     objectType, string.Join(", ", providerMethods.Select(m => $"{m.Name}({string.Join(", ", m.GetParameters().Select(p => p.ParameterType.Name))})")));
 
                 // NO HARDCODING: Look for save methods dynamically
@@ -833,19 +802,19 @@ namespace D365MetadataService.Services
 
                 if (providerSaveMethod != null)
                 {
-                    _logger.Information("Using provider method {MethodName} to save {ObjectType}:{ObjectName}", providerSaveMethod.Name, objectType, objectName);
+                    _logger.Information("[ObjectFactory] Using provider method {MethodName} to save {ObjectType}:{ObjectName}", providerSaveMethod.Name, objectType, objectName);
                     providerSaveMethod.Invoke(_metadataProvider, new object[] { modifiedObject });
-                    _logger.Information("Successfully saved {ObjectType}:{ObjectName} to metadata store using provider method", objectType, objectName);
+                    _logger.Information("[ObjectFactory] Successfully saved {ObjectType}:{ObjectName} to metadata store using provider method", objectType, objectName);
                     return Task.FromResult(true);
                 }
 
                 // If no provider method found, try the collection approach as fallback
-                _logger.Information("No provider save method found, trying collection approach for {ObjectType}", objectType);
+                _logger.Information("[ObjectFactory] No provider save method found, trying collection approach for {ObjectType}", objectType);
 
                 // Get the Ax type
                 if (!_axTypeCache.TryGetValue(objectType, out var axType))
                 {
-                    _logger.Warning("Object type {ObjectType} not found in cache", objectType);
+                    _logger.Warning("[ObjectFactory] Object type {ObjectType} not found in cache", objectType);
                     return Task.FromResult(false);
                 }
 
@@ -853,7 +822,7 @@ namespace D365MetadataService.Services
                 var providerProperty = FindProviderProperty(objectType);
                 if (providerProperty == null)
                 {
-                    _logger.Warning("Provider property not found for {ObjectType}", objectType);
+                    _logger.Warning("[ObjectFactory] Provider property not found for {ObjectType}", objectType);
                     return Task.FromResult(false);
                 }
 
@@ -861,7 +830,7 @@ namespace D365MetadataService.Services
                 var providerCollection = providerProperty.GetValue(_metadataProvider, new object[] { axType });
                 if (providerCollection == null)
                 {
-                    _logger.Warning("Provider collection is null for {ObjectType}", objectType);
+                    _logger.Warning("[ObjectFactory] Provider collection is null for {ObjectType}", objectType);
                     return Task.FromResult(false);
                 }
 
@@ -869,7 +838,7 @@ namespace D365MetadataService.Services
                 var collectionType = providerCollection.GetType();
                 var allMethods = collectionType.GetMethods(BindingFlags.Public | BindingFlags.Instance);
                 
-                _logger.Information("Available methods on provider collection for {ObjectType}: {Methods}", 
+                _logger.Information("[ObjectFactory] Available methods on provider collection for {ObjectType}: {Methods}", 
                     objectType, string.Join(", ", allMethods.Select(m => $"{m.Name}({string.Join(", ", m.GetParameters().Select(p => p.ParameterType.Name))})")));
 
                 // Look for methods that could save the object - these methods typically require ModelSaveInfo as second parameter
@@ -892,7 +861,7 @@ namespace D365MetadataService.Services
                     var resolvedModel = ResolveModelForObject(model ?? string.Empty, objectName, modifiedObject);
                     var modelSaveInfo = CreateModelSaveInfo(modelSaveInfoType, objectName, resolvedModel);
                     parameters = new object[] { modifiedObject, modelSaveInfo };
-                    _logger.Information("Using Create method with parameters: {ObjectType}, {ModelSaveInfoType}, Model: {Model}", modifiedObject.GetType().Name, modelSaveInfoType.Name, resolvedModel);
+                    _logger.Information("[ObjectFactory] Using Create method with parameters: {ObjectType}, {ModelSaveInfoType}, Model: {Model}", modifiedObject.GetType().Name, modelSaveInfoType.Name, resolvedModel);
                 }
                 else if (updateMethod != null)
                 {
@@ -902,26 +871,26 @@ namespace D365MetadataService.Services
                     var resolvedModel = ResolveModelForObject(model ?? string.Empty, objectName, modifiedObject);
                     var modelSaveInfo = CreateModelSaveInfo(modelSaveInfoType, objectName, resolvedModel);
                     parameters = new object[] { modifiedObject, modelSaveInfo };
-                    _logger.Information("Using Update method with parameters: {ObjectType}, {ModelSaveInfoType}, Model: {Model}", modifiedObject.GetType().Name, modelSaveInfoType.Name, resolvedModel);
+                    _logger.Information("[ObjectFactory] Using Update method with parameters: {ObjectType}, {ModelSaveInfoType}, Model: {Model}", modifiedObject.GetType().Name, modelSaveInfoType.Name, resolvedModel);
                 }
 
                 if (saveMethod == null)
                 {
-                    _logger.Warning("No suitable save method found on provider or collection for {ObjectType}", objectType);
+                    _logger.Warning("[ObjectFactory] No suitable save method found on provider or collection for {ObjectType}", objectType);
                     return Task.FromResult(false);
                 }
 
-                _logger.Information("Using collection method {MethodName} to save {ObjectType}:{ObjectName}", saveMethod.Name, objectType, objectName);
+                _logger.Information("[ObjectFactory] Using collection method {MethodName} to save {ObjectType}:{ObjectName}", saveMethod.Name, objectType, objectName);
 
                 // Invoke the save method with proper parameters
                 saveMethod.Invoke(providerCollection, parameters);
                 
-                _logger.Information("Successfully saved {ObjectType}:{ObjectName} to metadata store using collection method", objectType, objectName);
+                _logger.Information("[ObjectFactory] Successfully saved {ObjectType}:{ObjectName} to metadata store using collection method", objectType, objectName);
                 return Task.FromResult(true);
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Error saving object {ObjectType}:{ObjectName}", objectType, objectName);
+                _logger.Error(ex, "[ObjectFactory] Error saving object {ObjectType}:{ObjectName}", objectType, objectName);
                 return Task.FromResult(false);
             }
         }
@@ -936,26 +905,26 @@ namespace D365MetadataService.Services
             {
                 if (string.IsNullOrWhiteSpace(objectType) || string.IsNullOrWhiteSpace(objectName))
                 {
-                    _logger.Warning("Invalid parameters for DeleteObjectAsync: objectType={ObjectType}, objectName={ObjectName}", objectType, objectName);
+                    _logger.Warning("[ObjectFactory] Invalid parameters for DeleteObjectAsync: objectType={ObjectType}, objectName={ObjectName}", objectType, objectName);
                     return Task.FromResult(false);
                 }
 
-                _logger.Information("🗑️ Deleting object: {ObjectType}:{ObjectName}", objectType, objectName);
+                _logger.Information("[ObjectFactory] Deleting object: {ObjectType}:{ObjectName}", objectType, objectName);
 
                 // First, verify the object exists
                 var existingObject = GetExistingObject(objectType, objectName);
                 if (existingObject == null)
                 {
-                    _logger.Warning("❌ Object not found for deletion: {ObjectType}:{ObjectName}", objectType, objectName);
+                    _logger.Warning("[ObjectFactory] Object not found for deletion: {ObjectType}:{ObjectName}", objectType, objectName);
                     return Task.FromResult(false);
                 }
 
-                _logger.Information("✅ Object found, proceeding with deletion: {ObjectType}:{ObjectName}", objectType, objectName);
+                _logger.Information("[ObjectFactory] Object found, proceeding with deletion: {ObjectType}:{ObjectName}", objectType, objectName);
 
                 // Get the Ax type
                 if (!_axTypeCache.TryGetValue(objectType, out var axType))
                 {
-                    _logger.Warning("Object type {ObjectType} not found in cache", objectType);
+                    _logger.Warning("[ObjectFactory] Object type {ObjectType} not found in cache", objectType);
                     return Task.FromResult(false);
                 }
 
@@ -963,14 +932,14 @@ namespace D365MetadataService.Services
                 var providerProperty = FindProviderProperty(objectType);
                 if (providerProperty == null)
                 {
-                    _logger.Warning("No provider property found for {ObjectType}", objectType);
+                    _logger.Warning("[ObjectFactory] No provider property found for {ObjectType}", objectType);
                     return Task.FromResult(false);
                 }
 
                 var providerCollection = providerProperty.GetValue(_metadataProvider, new object[] { axType });
                 if (providerCollection == null)
                 {
-                    _logger.Warning("Provider collection is null for {ObjectType}", objectType);
+                    _logger.Warning("[ObjectFactory] Provider collection is null for {ObjectType}", objectType);
                     return Task.FromResult(false);
                 }
 
@@ -978,7 +947,7 @@ namespace D365MetadataService.Services
                 var deleteMethod = GetDeleteMethodDynamically(providerCollection.GetType(), objectName);
                 if (deleteMethod == null)
                 {
-                    _logger.Warning("No Delete method found on provider for {ObjectType}", objectType);
+                    _logger.Warning("[ObjectFactory] No Delete method found on provider for {ObjectType}", objectType);
                     return Task.FromResult(false);
                 }
 
@@ -988,24 +957,24 @@ namespace D365MetadataService.Services
 
                 if (modelSaveInfo == null)
                 {
-                    _logger.Error("Failed to create ModelSaveInfo for deletion of {ObjectType}:{ObjectName}", objectType, objectName);
+                    _logger.Error("[ObjectFactory] Failed to create ModelSaveInfo for deletion of {ObjectType}:{ObjectName}", objectType, objectName);
                     return Task.FromResult(false);
                 }
 
                 // Prepare parameters for Delete method: Delete(string name, ModelSaveInfo saveInfo)
                 var parameters = new object[] { objectName, modelSaveInfo };
 
-                _logger.Information("🗑️ Invoking Delete method for {ObjectType}:{ObjectName}", objectType, objectName);
+                _logger.Information("[ObjectFactory] Invoking Delete method for {ObjectType}:{ObjectName}", objectType, objectName);
 
                 // Invoke the delete method
                 deleteMethod.Invoke(providerCollection, parameters);
 
-                _logger.Information("✅ Successfully deleted {ObjectType}:{ObjectName} from metadata store", objectType, objectName);
+                _logger.Information("[ObjectFactory] Successfully deleted {ObjectType}:{ObjectName} from metadata store", objectType, objectName);
                 return Task.FromResult(true);
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "❌ Error deleting object {ObjectType}:{ObjectName}", objectType, objectName);
+                _logger.Error(ex, "[ObjectFactory] Error deleting object {ObjectType}:{ObjectName}", objectType, objectName);
                 return Task.FromResult(false);
             }
         }
@@ -1017,7 +986,7 @@ namespace D365MetadataService.Services
         {
             try
             {
-                _logger.Information("Looking for Delete method on provider type: {ProviderType}", providerType.Name);
+                _logger.Information("[ObjectFactory] Looking for Delete method on provider type: {ProviderType}", providerType.Name);
 
                 var methods = providerType.GetMethods(BindingFlags.Public | BindingFlags.Instance);
                 
@@ -1032,16 +1001,16 @@ namespace D365MetadataService.Services
                 if (deleteMethods.Length > 0)
                 {
                     var selectedMethod = deleteMethods.First();
-                    _logger.Information("✅ Found Delete method: {MethodName}", selectedMethod.Name);
+                    _logger.Information("[ObjectFactory] Found Delete method: {MethodName}", selectedMethod.Name);
                     return selectedMethod;
                 }
 
-                _logger.Warning("❌ No Delete method found with expected signature on {ProviderType}", providerType.Name);
+                _logger.Warning("[ObjectFactory] No Delete method found with expected signature on {ProviderType}", providerType.Name);
                 return null;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Error finding Delete method dynamically");
+                _logger.Error(ex, "[ObjectFactory] Error finding Delete method dynamically");
                 return null;
             }
         }
@@ -1053,27 +1022,27 @@ namespace D365MetadataService.Services
         {
             try
             {
-                _logger.Information("Creating ModelSaveInfo for object deletion: {ObjectName}", objectName);
+                _logger.Information("[ObjectFactory] Creating ModelSaveInfo for object deletion: {ObjectName}", objectName);
 
                 var modelSaveInfo = Activator.CreateInstance(modelSaveInfoType);
 
                 // Try to extract model information from the existing object
                 var objectType = existingObject.GetType();
-                _logger.Information("Existing object type: {ObjectType}", objectType.Name);
+                _logger.Information("[ObjectFactory] Existing object type: {ObjectType}", objectType.Name);
 
                 // Set basic properties
                 var idProperty = modelSaveInfoType.GetProperty("Id");
                 if (idProperty != null && idProperty.CanWrite)
                 {
                     idProperty.SetValue(modelSaveInfo, 1);
-                    _logger.Information("Set Id property to: 1");
+                    _logger.Information("[ObjectFactory] Set Id property to: 1");
                 }
 
                 var sequenceIdProperty = modelSaveInfoType.GetProperty("SequenceId");
                 if (sequenceIdProperty != null && sequenceIdProperty.CanWrite)
                 {
                     sequenceIdProperty.SetValue(modelSaveInfo, 1);
-                    _logger.Information("Set SequenceId property to: 1");
+                    _logger.Information("[ObjectFactory] Set SequenceId property to: 1");
                 }
 
                 var layerProperty = modelSaveInfoType.GetProperty("Layer");
@@ -1081,7 +1050,7 @@ namespace D365MetadataService.Services
                 {
                     // Use layer enum value - 8 is typically USR layer
                     layerProperty.SetValue(modelSaveInfo, 8);
-                    _logger.Information("Set Layer property to: 8 (USR)");
+                    _logger.Information("[ObjectFactory] Set Layer property to: 8 (USR)");
                 }
 
                 var nameProperty = modelSaveInfoType.GetProperty("Name");
@@ -1100,7 +1069,7 @@ namespace D365MetadataService.Services
                         if (modelValue != null)
                         {
                             modelName = modelValue.ToString();
-                            _logger.Information("Extracted model name from object.Model: {ModelName}", modelName);
+                            _logger.Information("[ObjectFactory] Extracted model name from object.Model: {ModelName}", modelName);
                         }
                     }
                     else if (objectModelNameProperty != null)
@@ -1109,19 +1078,19 @@ namespace D365MetadataService.Services
                         if (modelValue != null)
                         {
                             modelName = modelValue.ToString();
-                            _logger.Information("Extracted model name from object.ModelName: {ModelName}", modelName);
+                            _logger.Information("[ObjectFactory] Extracted model name from object.ModelName: {ModelName}", modelName);
                         }
                     }
 
                     nameProperty.SetValue(modelSaveInfo, modelName);
-                    _logger.Information("Set Name property to: {ModelName}", modelName);
+                    _logger.Information("[ObjectFactory] Set Name property to: {ModelName}", modelName);
                 }
 
                 return modelSaveInfo;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to create ModelSaveInfo for object deletion: {ObjectName}", objectName);
+                _logger.Error(ex, "[ObjectFactory] Failed to create ModelSaveInfo for object deletion: {ObjectName}", objectName);
                 return Activator.CreateInstance(modelSaveInfoType)!;
             }
         }
@@ -1134,7 +1103,7 @@ namespace D365MetadataService.Services
             // 1. Use explicitly provided model
             if (!string.IsNullOrWhiteSpace(providedModel))
             {
-                _logger.Information("Using explicitly provided model: {Model} for {ObjectName}", providedModel, objectName);
+                _logger.Information("[ObjectFactory] Using explicitly provided model: {Model} for {ObjectName}", providedModel, objectName);
                 return providedModel;
             }
 
@@ -1151,7 +1120,7 @@ namespace D365MetadataService.Services
                     var modelStr = modelValue?.ToString();
                     if (!string.IsNullOrWhiteSpace(modelStr))
                     {
-                        _logger.Information("Auto-detected model from object.Model: {Model} for {ObjectName}", modelStr, objectName);
+                        _logger.Information("[ObjectFactory] Auto-detected model from object.Model: {Model} for {ObjectName}", modelStr, objectName);
                         return modelStr!;
                     }
                 }
@@ -1164,7 +1133,7 @@ namespace D365MetadataService.Services
                     var modelStr = modelValue?.ToString();
                     if (!string.IsNullOrWhiteSpace(modelStr))
                     {
-                        _logger.Information("Auto-detected model from object.ModelName: {Model} for {ObjectName}", modelStr, objectName);
+                        _logger.Information("[ObjectFactory] Auto-detected model from object.ModelName: {Model} for {ObjectName}", modelStr, objectName);
                         return modelStr!;
                     }
                 }
@@ -1178,19 +1147,19 @@ namespace D365MetadataService.Services
                         var modelInfo = GetModelInfoForObject(axObjectType, objectName);
                         if (modelInfo != null)
                         {
-                            _logger.Information("Auto-detected model from provider: {Model} for {ObjectName}", modelInfo, objectName);
+                            _logger.Information("[ObjectFactory] Auto-detected model from provider: {Model} for {ObjectName}", modelInfo, objectName);
                             return modelInfo;
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.Debug(ex, "Could not auto-detect model from provider for {ObjectName}", objectName);
+                    _logger.Debug(ex, "[ObjectFactory] Could not auto-detect model from provider for {ObjectName}", objectName);
                 }
             }
 
             // 3. Fall back to configured default model
-            _logger.Warning("Could not determine model for {ObjectName}, using configured default", objectName);
+            _logger.Warning("[ObjectFactory] Could not determine model for {ObjectName}, using configured default", objectName);
             return GetConfiguredDefaultModel();
         }
 
@@ -1248,7 +1217,7 @@ namespace D365MetadataService.Services
             }
             catch (Exception ex)
             {
-                _logger.Debug(ex, "Error getting model info for {ObjectType}:{ObjectName}", objectType, objectName);
+                _logger.Debug(ex, "[ObjectFactory] Error getting model info for {ObjectType}:{ObjectName}", objectType, objectName);
             }
 
             return null;
@@ -1277,7 +1246,7 @@ namespace D365MetadataService.Services
                 
                 // Log all properties to understand the structure
                 var properties = modelSaveInfoType.GetProperties();
-                _logger.Information("ModelSaveInfo properties: {Properties}", 
+                _logger.Information("[ObjectFactory] ModelSaveInfo properties: {Properties}", 
                     string.Join(", ", properties.Select(p => $"{p.Name}:{p.PropertyType.Name}")));
                 
                 // Set all required properties based on discovered structure
@@ -1287,14 +1256,14 @@ namespace D365MetadataService.Services
                 if (idProperty != null && idProperty.CanWrite)
                 {
                     idProperty.SetValue(modelSaveInfo, 1);
-                    _logger.Information("Set Id property to: 1");
+                    _logger.Information("[ObjectFactory] Set Id property to: 1");
                 }
 
                 var sequenceIdProperty = modelSaveInfoType.GetProperty("SequenceId");
                 if (sequenceIdProperty != null && sequenceIdProperty.CanWrite)
                 {
                     sequenceIdProperty.SetValue(modelSaveInfo, 1);
-                    _logger.Information("Set SequenceId property to: 1");
+                    _logger.Information("[ObjectFactory] Set SequenceId property to: 1");
                 }
 
                 var layerProperty = modelSaveInfoType.GetProperty("Layer");
@@ -1302,7 +1271,7 @@ namespace D365MetadataService.Services
                 {
                     // Use layer enum value - 8 is typically USR layer
                     layerProperty.SetValue(modelSaveInfo, 8);
-                    _logger.Information("Set Layer property to: 8 (USR)");
+                    _logger.Information("[ObjectFactory] Set Layer property to: 8 (USR)");
                 }
 
                 var nameProperty = modelSaveInfoType.GetProperty("Name");
@@ -1311,7 +1280,7 @@ namespace D365MetadataService.Services
                     // Use provided model name, or fall back to configured default
                     var resolvedModelName = modelName ?? GetConfiguredDefaultModel();
                     nameProperty.SetValue(modelSaveInfo, resolvedModelName);
-                    _logger.Information("Set Name property to: {ModelName}", resolvedModelName);
+                    _logger.Information("[ObjectFactory] Set Name property to: {ModelName}", resolvedModelName);
 
                     // Try to get actual model info from Microsoft API for correct Id/Layer
                     if (_metadataProvider?.ModelManifest != null)
@@ -1323,7 +1292,7 @@ namespace D365MetadataService.Services
                             {
                                 idProperty?.SetValue(modelSaveInfo, modelInfoFromApi.Id);
                                 layerProperty?.SetValue(modelSaveInfo, modelInfoFromApi.Layer);
-                                _logger.Information("Updated ModelSaveInfo from API: Id={Id}, Layer={Layer} for model {Model}", 
+                                _logger.Information("[ObjectFactory] Updated ModelSaveInfo from API: Id={Id}, Layer={Layer} for model {Model}", 
                                     modelInfoFromApi.Id, modelInfoFromApi.Layer, resolvedModelName);
                             }
                         }
@@ -1338,14 +1307,14 @@ namespace D365MetadataService.Services
                 if (precedenceProperty != null && precedenceProperty.CanWrite)
                 {
                     precedenceProperty.SetValue(modelSaveInfo, 1L);
-                    _logger.Information("Set Precedence property to: 1");
+                    _logger.Information("[ObjectFactory] Set Precedence property to: 1");
                 }
 
                 return modelSaveInfo;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to create ModelSaveInfo for {ObjectName}", objectName);
+                _logger.Error(ex, "[ObjectFactory] Failed to create ModelSaveInfo for {ObjectName}", objectName);
                 return Activator.CreateInstance(modelSaveInfoType)!;
             }
         }
@@ -1376,17 +1345,17 @@ namespace D365MetadataService.Services
                 if (readMethods.Any())
                 {
                     var selectedMethod = readMethods.First();
-                    _logger.Debug("Selected read method: {MethodName} from {MethodCount} candidates", 
+                    _logger.Debug("[ObjectFactory] Selected read method: {MethodName} from {MethodCount} candidates", 
                         selectedMethod.Name, readMethods.Length);
                     return selectedMethod;
                 }
 
-                _logger.Warning("No suitable read method found on provider type {TypeName}", providerType.Name);
+                _logger.Warning("[ObjectFactory] No suitable read method found on provider type {TypeName}", providerType.Name);
                 return null;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Error finding read method dynamically");
+                _logger.Error(ex, "[ObjectFactory] Error finding read method dynamically");
                 return null;
             }
         }
@@ -1417,7 +1386,7 @@ namespace D365MetadataService.Services
                                !m.Name.StartsWith("remove_"))
                     .ToArray();
 
-                _logger.Information("Filtered candidate save methods: {Methods}", 
+                _logger.Information("[ObjectFactory] Filtered candidate save methods: {Methods}", 
                     string.Join(", ", candidateMethods.Select(m => m.Name)));
 
                 // First try methods that take the exact object type
@@ -1429,7 +1398,7 @@ namespace D365MetadataService.Services
                 if (exactMethods.Any())
                 {
                     var selectedMethod = exactMethods.First();
-                    _logger.Information("Selected exact save method: {MethodName}", selectedMethod.Name);
+                    _logger.Information("[ObjectFactory] Selected exact save method: {MethodName}", selectedMethod.Name);
                     return selectedMethod;
                 }
 
@@ -1442,18 +1411,18 @@ namespace D365MetadataService.Services
                 if (assignableMethods.Any())
                 {
                     var selectedMethod = assignableMethods.First();
-                    _logger.Information("Selected assignable save method: {MethodName}", selectedMethod.Name);
+                    _logger.Information("[ObjectFactory] Selected assignable save method: {MethodName}", selectedMethod.Name);
                     return selectedMethod;
                 }
 
-                _logger.Warning("No suitable save method found for object type {ObjectType}", objectType.Name);
-                _logger.Warning("Available candidate methods were: {Methods}", 
+                _logger.Warning("[ObjectFactory] No suitable save method found for object type {ObjectType}", objectType.Name);
+                _logger.Warning("[ObjectFactory] Available candidate methods were: {Methods}", 
                     string.Join(", ", candidateMethods.Select(m => m.Name)));
                 return null;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Error finding save method dynamically");
+                _logger.Error(ex, "[ObjectFactory] Error finding save method dynamically");
                 return null;
             }
         }

@@ -1,4 +1,4 @@
-using D365MetadataService.Models;
+﻿using D365MetadataService.Models;
 using D365MetadataService.Services;
 using Serilog;
 using System;
@@ -31,7 +31,7 @@ namespace D365MetadataService.Handlers
             if (validationError != null)
                 return validationError;
 
-            Logger.Information("Handling Object Collection request: {@Request}", new { request.Action, request.Id });
+            Logger.Information("[ObjectCollection] Handling Object Collection request: {@Request}", new { request.Action, request.Id });
 
             try
             {
@@ -69,7 +69,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error getting object collection");
+                Logger.Error(ex, "[ObjectCollection] Error getting object collection");
                 return ServiceResponse.CreateError($"Failed to get object collection: {ex.Message}");
             }
         }
@@ -87,28 +87,28 @@ namespace D365MetadataService.Handlers
                 var collectionProperty = resultType.GetProperty("Collection");
                 if (collectionProperty == null)
                 {
-                    Logger.Warning("Collection result does not have Collection property, cannot apply filter");
+                    Logger.Warning("[ObjectCollection] Collection result does not have Collection property, cannot apply filter");
                     return collectionResult;
                 }
 
                 var collection = collectionProperty.GetValue(collectionResult);
                 if (collection == null)
                 {
-                    Logger.Warning("Collection property is null, cannot apply filter");
+                    Logger.Warning("[ObjectCollection] Collection property is null, cannot apply filter");
                     return collectionResult;
                 }
 
                 var itemsProperty = collection.GetType().GetProperty("Items");
                 if (itemsProperty == null)
                 {
-                    Logger.Warning("Collection does not have Items property, cannot apply filter");
+                    Logger.Warning("[ObjectCollection] Collection does not have Items property, cannot apply filter");
                     return collectionResult;
                 }
 
                 var items = itemsProperty.GetValue(collection);
                 if (items is not System.Collections.IEnumerable enumerable)
                 {
-                    Logger.Warning("Items property is not enumerable, cannot apply filter");
+                    Logger.Warning("[ObjectCollection] Items property is not enumerable, cannot apply filter");
                     return collectionResult;
                 }
 
@@ -120,7 +120,7 @@ namespace D365MetadataService.Handlers
                     return MatchesWildcardPattern(itemName, filterPattern);
                 }).ToList();
 
-                Logger.Information("🔍 Filtered {TotalCount} items to {FilteredCount} using pattern '{FilterPattern}'", 
+                Logger.Information("[ObjectCollection] Filtered {TotalCount} items to {FilteredCount} using pattern '{FilterPattern}'", 
                     originalItems.Count, filteredItems.Count, filterPattern);
 
                 // Create new result object with filtered collection
@@ -143,7 +143,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Warning(ex, "Failed to apply filter to collection result, returning original");
+                Logger.Warning(ex, "[ObjectCollection] Failed to apply filter to collection result, returning original");
                 return collectionResult;
             }
         }

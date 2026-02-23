@@ -1,4 +1,4 @@
-using D365MetadataService.Models;
+﻿using D365MetadataService.Models;
 using D365MetadataService.Services;
 using Serilog;
 using System;
@@ -28,7 +28,7 @@ namespace D365MetadataService.Handlers
             if (validationError != null)
                 return validationError;
 
-            Logger.Information("Handling Associate request: {@Request}", new { request.Action, request.Parameters });
+            Logger.Information("[Associate] Handling Associate request: {@Request}", new { request.Action, request.Parameters });
 
             try
             {
@@ -37,7 +37,7 @@ namespace D365MetadataService.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Failed to process associate request");
+                Logger.Error(ex, "[Associate] Failed to process associate request");
                 return ServiceResponse.CreateError($"Associate operation failed: {ex.Message}");
             }
         }

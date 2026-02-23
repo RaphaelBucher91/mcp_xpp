@@ -1,4 +1,4 @@
-using D365MetadataService.Models;
+﻿using D365MetadataService.Models;
 using D365MetadataService.Services;
 using Serilog;
 using System;
@@ -38,18 +38,18 @@ namespace D365MetadataService.Handlers
                 var cascadeDelete = request.Parameters.ContainsKey("cascadeDelete") && 
                                    Convert.ToBoolean(request.Parameters["cascadeDelete"]);
 
-                Logger.Information("🗑️ Processing delete request: {ObjectName} ({ObjectType}), cascade: {CascadeDelete}",
+                Logger.Information("[DeleteObject] Processing delete request: {ObjectName} ({ObjectType}), cascade: {CascadeDelete}",
                     objectName, objectType, cascadeDelete);
 
                 // Phase 1: Basic deletion without comprehensive dependency analysis
-                Logger.Information("ℹ️ Phase 1 implementation - performing deletion using D365ObjectFactory");
+                Logger.Information("[DeleteObject] Phase 1 implementation - performing deletion using D365ObjectFactory");
 
                 // Perform the deletion using the object factory
                 var deleteSuccess = await _objectFactory.DeleteObjectAsync(objectType, objectName);
 
                 if (deleteSuccess)
                 {
-                    Logger.Information("✅ Successfully deleted {ObjectName} ({ObjectType})", objectName, objectType);
+                    Logger.Information("[DeleteObject] Successfully deleted {ObjectName} ({ObjectType})", objectName, objectType);
                     
                     return ServiceResponse.CreateSuccess(new
                     {
@@ -63,13 +63,13 @@ namespace D365MetadataService.Handlers
                 }
                 else
                 {
-                    Logger.Error("❌ Failed to delete {ObjectName} ({ObjectType})", objectName, objectType);
+                    Logger.Error("[DeleteObject] Failed to delete {ObjectName} ({ObjectType})", objectName, objectType);
                     return ServiceResponse.CreateError($"Failed to delete object: {objectName} ({objectType}). Check logs for details.");
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "❌ Error in delete object handler");
+                Logger.Error(ex, "[DeleteObject] Error in delete object handler");
                 return ServiceResponse.CreateError($"Internal error during deletion: {ex.Message}");
             }
         }

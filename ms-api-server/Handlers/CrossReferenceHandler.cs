@@ -59,6 +59,26 @@ namespace D365MetadataService.Handlers
 
         public override string SupportedAction => "crossreference";
 
+        /// <summary>
+        /// Public method to eagerly initialize the cross-reference database connection at startup.
+        /// Logs verbose details about the discovered database.
+        /// </summary>
+        public void TryInitialize()
+        {
+            Logger.Information("[CrossReference] Attempting to discover and connect to XRef database...");
+            Logger.Information("[CrossReference] PackagesLocalDirectory: {Path}", _config.PackagesLocalDirectory ?? "(not set)");
+
+            var initialized = EnsureInitialized();
+            if (initialized)
+            {
+                Logger.Information("[CrossReference] Cross-reference database initialized successfully");
+            }
+            else
+            {
+                Logger.Warning("[CrossReference] Cross-reference database is NOT available. Cross-reference lookups will fail until the XRef database is built in Visual Studio (Build > Update Cross References).");
+            }
+        }
+
         protected override async Task<ServiceResponse> HandleRequestAsync(ServiceRequest request)
         {
             var validationError = ValidateRequest(request);
@@ -99,6 +119,10 @@ namespace D365MetadataService.Handlers
             // Parse reference kind filter
             int kindFilter = ParseReferenceKind(referenceKind);
 
+            var kindName = kindFilter >= 0 ? GetKindName(kindFilter) : "All";
+            Logger.Information("[CrossReference] Starting lookup - Object: {ObjectPath}, Direction: {Direction}, Kind: {Kind}, MaxResults: {Max}",
+                objectPath, direction, kindName, maxResults);
+
             try
             {
                 CrossReferenceResult result;
@@ -114,11 +138,26 @@ namespace D365MetadataService.Handlers
                     result = await FindIncomingReferences(objectPath, kindFilter, maxResults);
                 }
 
+                Logger.Information("[CrossReference] Completed lookup - Object: {ObjectPath}, Direction: {Direction}, ReferencesFound: {Found}, TotalAvailable: {Total}",
+                    objectPath, direction, result.TotalFound, result.TotalAvailable);
+
+                if (result.SummaryByKind != null && result.SummaryByKind.Count > 0)
+                {
+                    foreach (var kvp in result.SummaryByKind)
+                    {
+                        Logger.Information("[CrossReference]   - {Kind}: {Count}", kvp.Key, kvp.Value);
+                    }
+                }
+                else
+                {
+                    Logger.Information("[CrossReference]   No references found for {ObjectPath}", objectPath);
+                }
+
                 return ServiceResponse.CreateSuccess(result);
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Failed to query cross-references for {ObjectPath}", objectPath);
+                Logger.Error(ex, "[CrossReference] Failed to query cross-references for {ObjectPath}", objectPath);
                 return ServiceResponse.CreateError($"Cross-reference query failed: {ex.Message}");
             }
         }
@@ -145,21 +184,22 @@ namespace D365MetadataService.Handlers
                     _connectionString = DiscoverXRefDatabase();
                     if (string.IsNullOrEmpty(_connectionString))
                     {
-                        Logger.Warning("No XRef database found on LocalDB");
+                        Logger.Warning("[CrossReference] No XRef database found on LocalDB");
                         return false;
                     }
 
                     // Verify connectivity
                     using var conn = new SqlConnection(_connectionString);
                     conn.Open();
-                    Logger.Information("XRef database connection verified: {ConnectionString}",
+                    Logger.Information("[CrossReference] Database connection verified successfully");
+                    Logger.Information("[CrossReference] Connection string: {ConnectionString}",
                         _connectionString.Replace("Integrated Security=true", "***"));
                     _isInitialized = true;
                     return true;
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error(ex, "Failed to initialize XRef database connection");
+                    Logger.Error(ex, "[CrossReference] Failed to initialize XRef database connection");
                     return false;
                 }
             }
@@ -175,9 +215,11 @@ namespace D365MetadataService.Handlers
         private string DiscoverXRefDatabase()
         {
             var version = ExtractVersionFromPath(_config.PackagesLocalDirectory);
-            Logger.Information("Extracted version from PackagesLocalDirectory: {Version}", version ?? "none");
+            Logger.Information("[CrossReference] PackagesLocalDirectory path: {Path}", _config.PackagesLocalDirectory ?? "(not set)");
+            Logger.Information("[CrossReference] Extracted version from path: {Version}", version ?? "(none - version could not be parsed)");
 
             var server = @"(localdb)\MSSQLLocalDB";
+            Logger.Information("[CrossReference] Connecting to LocalDB instance: {Server}", server);
             var masterConn = $"Server={server};Database=master;Integrated Security=true";
 
             try
@@ -198,12 +240,15 @@ namespace D365MetadataService.Handlers
 
                 if (xrefDatabases.Count == 0)
                 {
-                    Logger.Warning("No XRef databases found on LocalDB instance");
+                    Logger.Warning("[CrossReference] No XRef databases found on LocalDB instance. Ensure Visual Studio has built cross references (Build > Update Cross References).");
                     return null;
                 }
 
-                Logger.Information("Found {Count} XRef database(s): {Names}",
-                    xrefDatabases.Count, string.Join(", ", xrefDatabases.Select(d => d.Name)));
+                Logger.Information("[CrossReference] Found {Count} XRef database(s) on LocalDB:", xrefDatabases.Count);
+                foreach (var db in xrefDatabases)
+                {
+                    Logger.Information("[CrossReference]   - {DbName} (created: {Created:yyyy-MM-dd HH:mm:ss})", db.Name, db.Created);
+                }
 
                 // Strategy 1: Match by version number (strip dots from version)
                 if (!string.IsNullOrEmpty(version))
@@ -214,24 +259,28 @@ namespace D365MetadataService.Handlers
 
                     if (!string.IsNullOrEmpty(versionMatch.Name))
                     {
-                        Logger.Information("Matched XRef database by version {Version}: {DbName}",
+                        Logger.Information("[CrossReference] Matched XRef database by version {Version}: {DbName}",
                             version, versionMatch.Name);
-                        return $"Server={server};Database={versionMatch.Name};Integrated Security=true";
+                        var connStr = $"Server={server};Database={versionMatch.Name};Integrated Security=true";
+                        Logger.Information("[CrossReference] Using connection: {ConnectionString}", connStr.Replace("Integrated Security=true", "***"));
+                        return connStr;
                     }
 
-                    Logger.Information("No XRef database matched version {Version} (stripped: {Stripped}), falling back to latest",
+                    Logger.Warning("[CrossReference] No XRef database matched version {Version} (stripped: {Stripped}), falling back to latest",
                         version, versionStripped);
                 }
 
                 // Strategy 2: Use the most recently created database
                 var latestDb = xrefDatabases.First();
-                Logger.Information("Using latest XRef database: {DbName} (created: {Created})",
+                Logger.Information("[CrossReference] No version match available, using latest XRef database: {DbName} (created: {Created:yyyy-MM-dd HH:mm:ss})",
                     latestDb.Name, latestDb.Created);
-                return $"Server={server};Database={latestDb.Name};Integrated Security=true";
+                var fallbackConnStr = $"Server={server};Database={latestDb.Name};Integrated Security=true";
+                Logger.Information("[CrossReference] Using connection: {ConnectionString}", fallbackConnStr.Replace("Integrated Security=true", "***"));
+                return fallbackConnStr;
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Failed to discover XRef databases on LocalDB");
+                Logger.Error(ex, "[CrossReference] Failed to discover XRef databases on LocalDB. Is SQL Server LocalDB installed?");
                 return null;
             }
         }
@@ -407,6 +456,14 @@ namespace D365MetadataService.Handlers
             if (string.IsNullOrEmpty(prefix))
                 return null;
 
+            // Labels use a special path format: /Labels/@LabelFileID:LabelID
+            if (prefix == "Labels")
+            {
+                // Ensure the @ prefix is present
+                var labelRef = objectName.StartsWith("@") ? objectName : "@" + objectName;
+                return $"/Labels/{labelRef}";
+            }
+
             var path = $"/{prefix}/{objectName}";
 
             if (!string.IsNullOrEmpty(memberName))
@@ -449,6 +506,7 @@ namespace D365MetadataService.Handlers
                 "securityrole" => "SecurityRoles",
                 "securityduty" => "SecurityDuties",
                 "securityprivilege" => "SecurityPrivileges",
+                "label" or "labelfile" or "labels" => "Labels",
                 "report" => "Reports",
                 "service" => "Services",
                 "servicegroup" => "ServiceGroups",

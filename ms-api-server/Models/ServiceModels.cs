@@ -98,7 +98,7 @@ namespace D365MetadataService.Models
     public class D365Configuration
     {
         public string MetadataAssemblyPath { get; set; }
-        public string DefaultModel { get; set; } = "ApplicationSuite";
+        public string DefaultModel { get; set; } = "FleetManagement";
         public string PackagesLocalDirectory { get; set; }
         public string CustomMetadataPath { get; set; }
     }
