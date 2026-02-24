@@ -1,4 +1,4 @@
-import { promises as fs } from "fs";
+﻿import { promises as fs } from "fs";
 import { join, relative, basename, extname, dirname } from "path";
 import { fileURLToPath } from "url";
 import { D365ServiceClient } from "./d365-service-client.js";
@@ -96,7 +96,7 @@ export class ObjectIndexManager {
       }
     } catch (error) {
       // Skip directories we can't access
-      console.log(`⚠️ Could not access directory: ${relative(basePath, dirPath)}`);
+      console.log(`[ObjectIndex] Could not access directory: ${relative(basePath, dirPath)}`);
     }
   }
 
@@ -135,7 +135,7 @@ export class ObjectIndexManager {
       }
     } catch (error) {
       // Skip packages we can't access
-      console.log(`⚠️ Could not access package: ${packageName}`);
+      console.log(`[ObjectIndex] Could not access package: ${packageName}`);
     }
   }
 
@@ -175,7 +175,7 @@ export class ObjectIndexManager {
             
             if (now - stats.mtime.getTime() > maxAgeMs) {
               await fs.unlink(filePath);
-              console.log(`Cleaned up old cache file: ${entry.name}`);
+              console.log(`[ObjectIndex] Cleaned up old cache file: ${entry.name}`);
               return entry.name;
             }
             return null;
@@ -190,10 +190,10 @@ export class ObjectIndexManager {
       const cleanedCount = results.filter(result => result !== null).length;
       
       if (cleanedCount > 0) {
-        console.log(`Cache cleanup completed: ${cleanedCount} files removed`);
+        console.log(`[ObjectIndex] Cache cleanup completed: ${cleanedCount} files removed`);
       }
     } catch (error) {
-      console.error("Error cleaning up cache:", error);
+      console.error("[ObjectIndex] Error cleaning up cache:", error);
     }
   }
 
@@ -201,32 +201,32 @@ export class ObjectIndexManager {
     try {
       this.initializeSQLiteIndex();
     } catch (error) {
-      console.warn('⚠️ SQLite initialization failed, proceeding with rebuild:', (error as Error).message);
+      console.warn('[ObjectIndex] SQLite initialization failed, proceeding with rebuild:', (error as Error).message);
       // If SQLite fails to initialize, we should rebuild to fix it
       forceRebuild = true;
     }
     
     if (forceRebuild) {
       // Force rebuild - always clear database and rebuild
-      console.log('🗑️ Force rebuild requested - clearing SQLite cache');
+      console.log('[ObjectIndex] Force rebuild requested - clearing SQLite cache');
       if (this.sqliteIndex) {
         this.sqliteIndex.clearDatabase();
-        console.log('✅ SQLite cache cleared successfully');
+        console.log('[ObjectIndex] SQLite cache cleared successfully');
       }
     } else {
       // Normal mode - skip if objects exist (use safe method to avoid read-only issues)
       const totalCount = SQLiteObjectLookup.safeGetTotalCount();
       if (totalCount > 0) {
-        console.log(`📊 SQLite index already has ${totalCount} objects, skipping rebuild`);
+        console.log(`[ObjectIndex] SQLite index already has ${totalCount} objects, skipping rebuild`);
         return;
       }
     }
 
     // Try DLL-based indexing via D365 service with parallel processing
     try {
-      console.log('Attempting DLL-based indexing via D365 service with parallel processing...');
+      console.log('[ObjectIndex] Attempting DLL-based indexing via D365 service with parallel processing...');
       
-      console.log('Connecting to D365 C# service for model discovery...');
+      console.log('[ObjectIndex] Connecting to D365 C# service for model discovery...');
       const client = new D365ServiceClient();
       await client.connect();
       
@@ -238,7 +238,7 @@ export class ObjectIndexManager {
           throw new Error('No models discovered from C# service');
         }
 
-        console.log(`📊 Processing ${TARGET_MODELS.length} models via parallel workers...`);
+        console.log(`[ObjectIndex] Processing ${TARGET_MODELS.length} models via parallel workers...`);
         
         // Process models in parallel using worker threads
         // Process 20 models each time
@@ -263,31 +263,31 @@ export class ObjectIndexManager {
           if (result.success) {
             totalObjects += result.objectCount;
             allObjects.push(...result.objects);
-            console.log(`   ✅ ${result.modelName}: ${result.objectCount} objects (${result.processingTime}ms)`);
+            console.log(`[ObjectIndex]    ${result.modelName}: ${result.objectCount} objects (${result.processingTime}ms)`);
           } else {
-            console.error(`   ❌ ${result.modelName}: ${result.error}`);
+            console.error(`[ObjectIndex]    ${result.modelName}: ${result.error}`);
           }
         }
         
         // Bulk insert all objects from all models in one operation
         if (allObjects.length > 0) {
-          console.log(`🚀 Bulk inserting ${allObjects.length} objects from all models...`);
+          console.log(`[ObjectIndex] Bulk inserting ${allObjects.length} objects from all models...`);
           const insertStartTime = Date.now();
           this.sqliteIndex!.insertObjectsBulk(allObjects);
           const insertTime = Date.now() - insertStartTime;
-          console.log(`✅ Bulk insert completed in ${insertTime}ms`);
+          console.log(`[ObjectIndex] Bulk insert completed in ${insertTime}ms`);
         }
 
-        console.log(`🎉 DLL-based indexing complete: ${totalObjects} objects indexed via service enumeration!`);
-        console.log('✅ Full index build completed successfully!');
+        console.log(`[ObjectIndex] DLL-based indexing complete: ${totalObjects} objects indexed via service enumeration!`);
+        console.log('[ObjectIndex] Full index build completed successfully!');
         
       } finally {
         await client.disconnect();
-        console.log('Disconnected from D365 service');
+        console.log('[ObjectIndex] Disconnected from D365 service');
       }
       
     } catch (error) {
-      console.warn(`⚠️  DLL-based indexing failed, falling back to file-based: ${(error as Error).message}`);
+      console.warn(`[ObjectIndex]  DLL-based indexing failed, falling back to file-based: ${(error as Error).message}`);
       // Could add file-based fallback here if needed
     }
   }
@@ -305,11 +305,11 @@ export class ObjectIndexManager {
           .filter((model: any) => model.HasObjects && (model.Type === 'Standard' || model.ObjectCount > 0))
           .map((model: any) => model.Name);
           
-        console.log(`📋 Discovered ${modelsWithObjects.length} D365 models with objects via DLL enumeration`);
+        console.log(`[ObjectIndex] Discovered ${modelsWithObjects.length} D365 models with objects via DLL enumeration`);
         return modelsWithObjects;
       }
       
-      console.warn('⚠️  Failed to get models from C# service, using hardcoded fallback');
+      console.warn('[ObjectIndex]  Failed to get models from C# service, using hardcoded fallback');
       // Fallback to known working models
       return [
         'ApplicationCommon',
@@ -318,7 +318,7 @@ export class ObjectIndexManager {
         'Foundation'
       ];
     } catch (error) {
-      console.warn(`⚠️  Could not connect to C# service for model discovery: ${(error as Error).message}`);
+      console.warn(`[ObjectIndex]  Could not connect to C# service for model discovery: ${(error as Error).message}`);
       // Fallback to known working models
       return [
         'ApplicationCommon',
@@ -352,7 +352,7 @@ export class ObjectIndexManager {
     );
 
     // Wait for all workers to complete
-    console.log(`🧵 Starting ${workerPromises.length} worker threads...`);
+    console.log(`[ObjectIndex] Starting ${workerPromises.length} worker threads...`);
     const results = await Promise.allSettled(workerPromises);
     
     // Process results
@@ -374,7 +374,7 @@ export class ObjectIndexManager {
     const successCount = processedResults.filter(r => r.success).length;
     const failedCount = processedResults.length - successCount;
     
-    console.log(`🎯 Parallel processing complete: ${successCount} successful, ${failedCount} failed`);
+    console.log(`[ObjectIndex] Parallel processing complete: ${successCount} successful, ${failedCount} failed`);
     
     return processedResults;
   }
@@ -383,7 +383,7 @@ export class ObjectIndexManager {
     this.initializeSQLiteIndex();
     
     if (!this.sqliteIndex) {
-      console.warn('⚠️  SQLite index not available');
+      console.warn('[ObjectIndex]  SQLite index not available');
       return [];
     }
 
@@ -406,7 +406,7 @@ export class ObjectIndexManager {
         return a.name.localeCompare(b.name);
       });
     } catch (error) {
-      console.error('❌ Error finding objects:', error);
+      console.error('[ObjectIndex] Error finding objects:', error);
       return [];
     }
   }
@@ -420,7 +420,7 @@ export class ObjectIndexManager {
       try {
         this.sqliteIndex.initialize();
       } catch (error) {
-        console.error('❌ Failed to initialize SQLite lookup:', (error as Error).message);
+        console.error('[ObjectIndex] Failed to initialize SQLite lookup:', (error as Error).message);
         this.sqliteIndex = null; // Reset to null so we know it failed
         throw error; // Re-throw so caller can handle
       }
@@ -431,7 +431,7 @@ export class ObjectIndexManager {
     this.initializeSQLiteIndex();
     
     if (!this.sqliteIndex) {
-      console.warn('⚠️  SQLite index not available');
+      console.warn('[ObjectIndex]  SQLite index not available');
       return {
         totalObjects: 0,
         byType: {},
@@ -450,7 +450,7 @@ export class ObjectIndexManager {
         byPackage: modelStats
       };
     } catch (error) {
-      console.error('❌ Error getting stats from SQLite:', error);
+      console.error('[ObjectIndex] Error getting stats from SQLite:', error);
       return {
         totalObjects: 0,
         byType: {},
@@ -463,7 +463,7 @@ export class ObjectIndexManager {
     this.initializeSQLiteIndex();
     
     if (!this.sqliteIndex) {
-      console.warn('⚠️  SQLite index not available');
+      console.warn('[ObjectIndex] SQLite index not available');
       return [];
     }
 
@@ -490,7 +490,7 @@ export class ObjectIndexManager {
       // Apply limit if specified
       return limit ? results.slice(0, limit) : results;
     } catch (error) {
-      console.error('❌ Error listing objects by type:', error);
+      console.error('[ObjectIndex] Error listing objects by type:', error);
       return [];
     }
   }
@@ -508,7 +508,7 @@ export class ObjectIndexManager {
     this.initializeSQLiteIndex();
     
     if (!this.sqliteIndex) {
-      console.warn('⚠️  SQLite index not available');
+      console.warn('[ObjectIndex]  SQLite index not available');
       return 0;
     }
 
@@ -516,7 +516,7 @@ export class ObjectIndexManager {
       const typeStats = this.sqliteIndex.getTypeStats();
       return typeStats[objectType] || 0;
     } catch (error) {
-      console.error('❌ Error getting object count by type:', error);
+      console.error('[ObjectIndex] Error getting object count by type:', error);
       return 0;
     }
   }
@@ -537,7 +537,7 @@ export class ObjectIndexManager {
       // The actual caching implementation will log success message
       await this.sqliteIndex.cacheObjectTypes(objectTypes);
     } catch (error) {
-      console.error('❌ Error caching object types:', error);
+      console.error('[ObjectIndex] Error caching object types:', error);
       throw error;
     }
   }
@@ -550,7 +550,7 @@ export class ObjectIndexManager {
     this.initializeSQLiteIndex();
     
     if (!this.sqliteIndex) {
-      console.warn('⚠️  SQLite index not available for retrieving cached object types');
+      console.warn('[ObjectIndex]  SQLite index not available for retrieving cached object types');
       return [];
     }
 
@@ -558,7 +558,7 @@ export class ObjectIndexManager {
       const cachedTypes = await this.sqliteIndex.getCachedObjectTypes();
       return cachedTypes || [];
     } catch (error) {
-      console.error('❌ Error retrieving cached object types:', error);
+      console.error('[ObjectIndex] Error retrieving cached object types:', error);
       return [];
     }
   }
@@ -571,7 +571,7 @@ export class ObjectIndexManager {
     this.initializeSQLiteIndex();
     
     if (!this.sqliteIndex) {
-      console.warn('⚠️  SQLite index not available for adding object');
+      console.warn('[ObjectIndex]  SQLite index not available for adding object');
       return false;
     }
 
@@ -588,14 +588,14 @@ export class ObjectIndexManager {
 
       const success = this.sqliteIndex.insertObject(objectLocation);
       if (success) {
-        console.log(`✅ Added ${objectType} '${objectName}' to search index (model: ${model})`);
+        console.log(`[ObjectIndex] Added ${objectType} '${objectName}' to search index (model: ${model})`);
       } else {
-        console.warn(`⚠️  Failed to add ${objectType} '${objectName}' to search index`);
+        console.warn(`[ObjectIndex]  Failed to add ${objectType} '${objectName}' to search index`);
       }
       
       return success;
     } catch (error) {
-      console.error(`❌ Error adding object to index: ${error}`);
+      console.error(`[ObjectIndex] Error adding object to index: ${error}`);
       return false;
     }
   }

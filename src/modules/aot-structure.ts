@@ -1,4 +1,4 @@
-import { promises as fs } from "fs";
+﻿import { promises as fs } from "fs";
 import { join, dirname, extname } from "path";
 import { fileURLToPath } from "url";
 import { AOTStructure, AOTNodeConfig, DiscoveredTypeInfo } from "./types.js";
@@ -17,7 +17,7 @@ export class AOTStructureManager {
     try {
       this.aotStructure = await loadAOTStructure<AOTStructure>();
     } catch (error) {
-      console.error('Failed to load AOT structure:', error);
+      console.error('[AotStructure] Failed to load AOT structure:', error);
       // Fallback to minimal structure
       this.aotStructure = {
         aotStructure: {
@@ -73,7 +73,7 @@ export class AOTStructureManager {
         }
       }
     } catch (error) {
-      console.error(`Error scanning directory ${basePath}:`, error);
+      console.error(`[AotStructure] Error scanning directory ${basePath}:`, error);
     }
   }
 
@@ -285,7 +285,7 @@ export class AOTStructureManager {
       const config = await loadD365ModelConfig<{ aotDirectories?: string[] }>();
       return config.aotDirectories || [];
     } catch (error) {
-      console.error('Failed to load AOT directories from config:', error);
+      console.error('[AotStructure] Failed to load AOT directories from config:', error);
       // Fallback to minimal set
       return ['AxClass', 'AxTable', 'AxForm', 'AxEnum', 'AxQuery'];
     }
@@ -297,7 +297,7 @@ export class AOTStructureManager {
       const config = await loadD365ModelConfig<{ xppMetadataDirectories?: string[] }>();
       return config.xppMetadataDirectories || [];
     } catch (error) {
-      console.error('Failed to load XppMetadata directories from config:', error);
+      console.error('[AotStructure] Failed to load XppMetadata directories from config:', error);
       // Fallback to minimal set
       return ['AxClass', 'AxTable', 'AxForm'];
     }
@@ -309,7 +309,7 @@ export class AOTStructureManager {
       const config = await loadD365ModelConfig<{ layerMapping?: Record<string, number> }>();
       return config.layerMapping?.[layerCode.toLowerCase()] ?? 14; // Default to USR (14)
     } catch (error) {
-      console.error('Failed to load layer mapping from config:', error);
+      console.error('[AotStructure] Failed to load layer mapping from config:', error);
       return 14; // Default to USR
     }
   }
@@ -320,7 +320,7 @@ export class AOTStructureManager {
       const config = await loadD365ModelConfig<{ modelDescriptorTemplate?: any }>();
       return config.modelDescriptorTemplate;
     } catch (error) {
-      console.error('Failed to load model descriptor template from config:', error);
+      console.error('[AotStructure] Failed to load model descriptor template from config:', error);
       return null;
     }
   }
@@ -407,13 +407,13 @@ export class AOTStructureManager {
       const cachedTypes = await ObjectIndexManager.getCachedObjectTypes();
       
       if (cachedTypes && cachedTypes.length > 0) {
-        console.log(`✅ Using ${cachedTypes.length} cached object types from SQLite`);
+        console.log(`[AotStructure] Using ${cachedTypes.length} cached object types from SQLite`);
         return cachedTypes;
       }
       
-      console.log('No cached object types found, falling back to D365 service');
+      console.log('[AotStructure] No cached object types found, falling back to D365 service');
     } catch (error) {
-      console.warn('Failed to retrieve cached object types:', error);
+      console.warn('[AotStructure] Failed to retrieve cached object types:', error);
     }
 
     // Fallback to D365 service if no cached data available
@@ -440,7 +440,7 @@ export class AOTStructureManager {
           await ObjectIndexManager.cacheObjectTypes(dedupedTypes);
           // Logging is handled by the actual caching implementation
         } catch (cacheError) {
-          console.warn('Failed to cache object types:', cacheError);
+          console.warn('[AotStructure] Failed to cache object types:', cacheError);
         }
         
         return dedupedTypes;
@@ -450,7 +450,7 @@ export class AOTStructureManager {
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Failed to get object types from D365 service:', errorMessage);
+      console.error('[AotStructure] Failed to get object types from D365 service:', errorMessage);
       // Minimal fallback - just enough to not break the system
       return ["AxModel", "AxClass", "AxTable", "AxEnum", "AxForm"];
     }
@@ -468,13 +468,13 @@ export class AOTStructureManager {
       const cachedTypes = await ObjectIndexManager.getCachedObjectTypes();
       
       if (cachedTypes && cachedTypes.length > 0) {
-        console.log(`✅ Using ${cachedTypes.length} cached object types from SQLite (service method)`);
+        console.log(`[AotStructure] Using ${cachedTypes.length} cached object types from SQLite (service method)`);
         return cachedTypes;
       }
       
-      console.log('No cached object types found, querying D365 service');
+      console.log('[AotStructure] No cached object types found, querying D365 service');
     } catch (error) {
-      console.warn('Failed to retrieve cached object types:', error);
+      console.warn('[AotStructure] Failed to retrieve cached object types:', error);
     }
 
     // Query D365 service if no cached data available
@@ -501,19 +501,19 @@ export class AOTStructureManager {
           await ObjectIndexManager.cacheObjectTypes(dedupedTypes);
           // Logging is handled by the actual caching implementation
         } catch (cacheError) {
-          console.warn('Failed to cache object types:', cacheError);
+          console.warn('[AotStructure] Failed to cache object types:', cacheError);
         }
         
         return dedupedTypes;
       }
       
       // Fallback to static method if service query fails
-      console.warn('D365 service reflection failed, using static method');
+      console.warn('[AotStructure] D365 service reflection failed, using static method');
       return this.getAvailableObjectTypes();
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.warn('Failed to get object types from D365 service, using static method:', errorMessage);
+      console.warn('[AotStructure] Failed to get object types from D365 service, using static method:', errorMessage);
       // Fallback to static method
       return this.getAvailableObjectTypes();
     }
@@ -532,7 +532,7 @@ export class AOTStructureManager {
       
       return serviceTypes.includes(objectType) || serviceTypes.includes(axObjectType);
     } catch (error) {
-      console.warn('Failed to validate object type with service, assuming supported:', error);
+      console.warn('[AotStructure] Failed to validate object type with service, assuming supported:', error);
       return true; // Optimistic fallback
     }
   }
@@ -550,7 +550,7 @@ export class AOTStructureManager {
       
       return null; // For now, until we implement the service method
     } catch (error) {
-      console.error('Failed to get object type definition from D365 service:', error);
+      console.error('[AotStructure] Failed to get object type definition from D365 service:', error);
       return null;
     }
   }
@@ -559,7 +559,7 @@ export class AOTStructureManager {
     try {
       return await loadD365ModelConfig();
     } catch (error) {
-      console.error('Failed to load D365 model configuration:', error);
+      console.error('[AotStructure] Failed to load D365 model configuration:', error);
       return null;
     }
   }

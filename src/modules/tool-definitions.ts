@@ -1,4 +1,4 @@
-import { AOTStructureManager } from "./aot-structure.js";
+﻿import { AOTStructureManager } from "./aot-structure.js";
 
 /**
  * Tool definitions for the MCP X++ Server
@@ -16,7 +16,7 @@ export class ToolDefinitions {
       tools: [
         {
           name: "create_xpp_object",
-          description: "BROWSE OBJECT TYPES: Call without parameters to see all 544+ available D365 F&O object types organized by category. CREATE OBJECTS: Provide parameters to create D365 F&O objects using D365 service integration. Supports classes, tables, enums, data entities, reports, workflows, services, and more. IMPORTANT: For creating FORMS, use the dedicated 'create_form' tool instead as it provides specialized pattern support and datasource integration.",
+          description: "Create X++ objects and D365 .xml metadata files. Handles creating AxClass/*.xml, AxTable/*.xml, AxEnum/*.xml, AxEdt/*.xml, AxView/*.xml, AxQuery/*.xml, AxReport/*.xml and all other D365 AOT XML files. NEVER use generic file-creation tools to create these XML files - they require specialized AOT metadata structure. Call without parameters to browse all 544+ available D365 F&O object types. Supports classes, tables, enums, data entities, EDTs, views, queries, reports, workflows, services, and more. For creating FORMS (AxForm/*.xml), use the dedicated 'create_form' tool instead.",
           inputSchema: {
             type: "object",
             properties: {
@@ -27,7 +27,7 @@ export class ToolDefinitions {
               objectType: {
                 type: "string",
                 enum: availableObjectTypes,
-                description: "D365 object type to create. 🔍 IMPORTANT: Call this tool WITHOUT parameters first to see all 544+ available types organized by category! Common types: 'AxClass' (X++ classes), 'AxTable' (data tables), 'AxForm' (UI forms), 'AxEnum' (enumerations), 'AxEdt' (extended data types), 'AxView' (database views), 'AxQuery' (queries), 'AxReport' (SSRS reports), 'AxMenuItemDisplay' (menu items), 'AxDataEntityView' (OData entities), 'AxWorkflowHierarchyProvider' (workflow), 'AxService' (services), 'AxMap' (data maps)."
+                description: "D365 object type to create. IMPORTANT: Call this tool WITHOUT parameters first to see all 544+ available types organized by category! Common types: 'AxClass' (X++ classes), 'AxTable' (data tables), 'AxForm' (UI forms), 'AxEnum' (enumerations), 'AxEdt' (extended data types), 'AxView' (database views), 'AxQuery' (queries), 'AxReport' (SSRS reports), 'AxMenuItemDisplay' (menu items), 'AxDataEntityView' (OData entities), 'AxWorkflowHierarchyProvider' (workflow), 'AxService' (services), 'AxMap' (data maps)."
               },
               layer: {
                 type: "string",
@@ -72,25 +72,25 @@ export class ToolDefinitions {
             required: [], // No required fields - allows calling without parameters to list object types
             examples: [
               {
-                description: "🔍 DISCOVER: Browse all 544+ available object types organized by category (CALL THIS FIRST)",
+                description: "DISCOVER: Browse all 544+ available object types organized by category (CALL THIS FIRST)",
                 parameters: {}
               },
               {
-                description: "🔍 DISCOVER: Find available parameters for AxTable objects",
+                description: "DISCOVER: Find available parameters for AxTable objects",
                 parameters: {
                   objectType: "AxTable",
                   discoverParameters: true
                 }
               },
               {
-                description: "🔍 DISCOVER: Find available parameters for AxClass objects",
+                description: "DISCOVER: Find available parameters for AxClass objects",
                 parameters: {
                   objectType: "AxClass", 
                   discoverParameters: true
                 }
               },
               {
-                description: "🏗️ CREATE: Custom business logic class",
+                description: "CREATE: Custom business logic class",
                 parameters: {
                   objectName: "MyBusinessLogicClass",
                   objectType: "AxClass",
@@ -98,7 +98,7 @@ export class ToolDefinitions {
                 }
               },
               {
-                description: "🏗️ CREATE: Data table for customer extensions",
+                description: "CREATE: Data table for customer extensions",
                 parameters: {
                   objectName: "CustTableExtension",
                   objectType: "AxTable",
@@ -107,7 +107,7 @@ export class ToolDefinitions {
                 }
               },
               {
-                description: "🏗️ CREATE: Form for data entry",
+                description: "CREATE: Form for data entry",
                 parameters: {
                   objectName: "MyDataEntryForm",
                   objectType: "AxForm",
@@ -116,7 +116,7 @@ export class ToolDefinitions {
                 }
               },
               {
-                description: "🏗️ CREATE: Enumeration for status values",
+                description: "CREATE: Enumeration for status values",
                 parameters: {
                   objectName: "MyStatusEnum",
                   objectType: "AxEnum",
@@ -124,7 +124,7 @@ export class ToolDefinitions {
                 }
               },
               {
-                description: "🏗️ CREATE: Data entity for OData/integration",
+                description: "CREATE: Data entity for OData/integration",
                 parameters: {
                   objectName: "MyDataEntity",
                   objectType: "AxDataEntityView",
@@ -137,7 +137,7 @@ export class ToolDefinitions {
         },
         {
           name: "create_form",
-          description: "🎯 SPECIALIZED FORM CREATION TOOL: Create D365 forms with advanced pattern support and datasource integration. This tool combines form creation and pattern discovery in one interface. 🔧 MODE 1 (create): Create forms with patterns, datasources, and proper D365 integration. 🔍 MODE 2 (list_patterns): Discover available D365 form patterns with descriptions. Use this tool instead of 'create_xpp_object' for all form-related operations as it provides specialized form capabilities.",
+          description: "Create D365 form .xml files (AxForm/*.xml) with pattern support and datasource integration. NEVER use generic file tools to create or edit form XML files. MODE 1 (create): Create forms with patterns, datasources, and proper D365 integration. MODE 2 (list_patterns): Discover available D365 form patterns. Use this tool instead of 'create_xpp_object' for all form-related operations.",
           inputSchema: {
             type: "object",
             properties: {
@@ -172,13 +172,13 @@ export class ToolDefinitions {
           },
           examples: [
             {
-              description: "🔍 LIST PATTERNS: Discover all available D365 form patterns",
+              description: "LIST PATTERNS: Discover all available D365 form patterns",
               parameters: {
                 mode: "list_patterns"
               }
             },
             {
-              description: "🏗️ CREATE SIMPLE FORM: Create a basic list form with single datasource",
+              description: "CREATE SIMPLE FORM: Create a basic list form with single datasource",
               parameters: {
                 mode: "create",
                 formName: "MyCustomerListForm",
@@ -187,7 +187,7 @@ export class ToolDefinitions {
               }
             },
             {
-              description: "🏗️ CREATE COMPLEX FORM: Create a details master form with multiple datasources",
+              description: "CREATE COMPLEX FORM: Create a details master form with multiple datasources",
               parameters: {
                 mode: "create",
                 formName: "MySalesOrderForm",
@@ -198,7 +198,7 @@ export class ToolDefinitions {
               }
             },
             {
-              description: "🏗️ CREATE LIST PAGE: Create a list page form for browsing records",
+              description: "CREATE LIST PAGE: Create a list page form for browsing records",
               parameters: {
                 mode: "create",
                 formName: "MyCustomerListPage",
@@ -207,7 +207,7 @@ export class ToolDefinitions {
               }
             },
             {
-              description: "🏗️ CREATE WITH CSV DATASOURCES: Using comma-separated datasource string",
+              description: "CREATE WITH CSV DATASOURCES: Using comma-separated datasource string",
               parameters: {
                 mode: "create", 
                 formName: "MyInventoryForm",
@@ -218,7 +218,7 @@ export class ToolDefinitions {
         },
         {
           name: "delete_xpp_object",
-          description: "🗑️ SAFE D365 OBJECT DELETION: Delete D365 F&O objects with dependency validation and safety checks. ⚠️ HIGH RISK OPERATION: This tool permanently removes objects from metadata. Will fail if dependencies exist to prevent breaking changes. Supports cascade deletion for complex objects like forms with dependent parts/controls.",
+          description: "Delete D365 X++ objects and their .xml metadata files (AxClass/*.xml, AxTable/*.xml, AxForm/*.xml, etc.). NEVER use generic file-deletion tools to remove these XML files. Performs dependency validation and safety checks before deletion. Will fail if dependencies exist to prevent breaking changes. Supports cascade deletion for complex objects like forms with dependent parts/controls.",
           inputSchema: {
             type: "object",
             properties: {
@@ -240,14 +240,14 @@ export class ToolDefinitions {
             required: ["objectName", "objectType"],
             examples: [
               {
-                description: "🗑️ SAFE DELETION: Delete a custom class (will fail if other objects reference it)",
+                description: "SAFE DELETION: Delete a custom class (will fail if other objects reference it)",
                 parameters: {
                   objectName: "MyCustomClass",
                   objectType: "AxClass"
                 }
               },
               {
-                description: "🗑️ CASCADE DELETION: Delete a form and all its dependent parts/controls",
+                description: "CASCADE DELETION: Delete a form and all its dependent parts/controls",
                 parameters: {
                   objectName: "MyTestForm", 
                   objectType: "AxForm",
@@ -255,7 +255,7 @@ export class ToolDefinitions {
                 }
               },
               {
-                description: "🗑️ TABLE DELETION: Delete a custom table (will fail if relations/forms reference it)", 
+                description: "TABLE DELETION: Delete a custom table (will fail if relations/forms reference it)", 
                 parameters: {
                   objectName: "MyTestTable",
                   objectType: "AxTable"
@@ -266,7 +266,7 @@ export class ToolDefinitions {
         },
         {
           name: "find_xpp_object",
-          description: "Find and analyze X++ objects (classes, tables, forms, etc.) by name. Can also be used to validate if an object exists in the codebase.",
+          description: "Find and locate X++ objects and their .xml files (AxClass/*.xml, AxTable/*.xml, AxForm/*.xml, AxEnum/*.xml, etc.) by name in D365 metadata. Use this instead of generic file-search/grep tools when looking for D365 X++ objects, AOT XML files, or .xpp source files. Returns object type, model, and file path.",
           inputSchema: {
             type: "object",
             properties: {
@@ -288,7 +288,7 @@ export class ToolDefinitions {
         },
         {
           name: "inspect_xpp_object",
-          description: "🔍 ENHANCED D365 OBJECT INSPECTION v2.0 - Advanced inspection with summary-first architecture for optimal agent workflows. Supports 4 inspection modes: fast summaries, targeted properties, specific collections, and X++ source code extraction. ✅ PERFORMANCE OPTIMIZED: 10x faster summaries, unlimited collection access (619+ methods, 193+ fields), no truncation limits. ✅ UNIVERSAL SUPPORT: Works with all 544+ D365 object types (Tables, Classes, Forms, Enums, etc.) using dynamic discovery. ✅ AGENT-FRIENDLY: Progressive disclosure pattern - start with summary, drill down as needed.",
+          description: "Read and inspect X++ source code and D365 .xml metadata files (AxClass/*.xml, AxTable/*.xml, AxForm/*.xml, AxEnum/*.xml, etc.). Use this instead of generic read_file/open_file tools to view X++ classes, tables, forms, enums, and all D365 AOT XML content. Supports 4 modes: 'summary' (fast overview), 'properties' (all XML metadata properties), 'collection' (fields, methods, relations, indexes), 'xppcode' (extract X++ method source code). Works with all 544+ D365 object types. NEVER use generic file-read tools on D365 XML files.",
           inputSchema: {
             type: "object",
             properties: {
@@ -330,7 +330,7 @@ export class ToolDefinitions {
             required: ["objectName", "objectType"],
             examples: [
               {
-                description: "🚀 RECOMMENDED: Fast summary overview - see what's available",
+                description: "RECOMMENDED: Fast summary overview - see what's available",
                 parameters: {
                   objectName: "CustTable",
                   objectType: "AxTable",
@@ -338,7 +338,7 @@ export class ToolDefinitions {
                 }
               },
               {
-                description: "🔧 GET PROPERTIES: All object properties without collections",
+                description: "GET PROPERTIES: All object properties without collections",
                 parameters: {
                   objectName: "CustTable", 
                   objectType: "AxTable",
@@ -346,7 +346,7 @@ export class ToolDefinitions {
                 }
               },
               {
-                description: "📋 DRILL DOWN: Get all methods from a table (no limits!)",
+                description: "DRILL DOWN: Get all methods from a table (no limits!)",
                 parameters: {
                   objectName: "SalesTable",
                   objectType: "AxTable", 
@@ -355,7 +355,7 @@ export class ToolDefinitions {
                 }
               },
               {
-                description: "📋 CLASS METHODS: Get all methods from a business logic class",
+                description: "CLASS METHODS: Get all methods from a business logic class",
                 parameters: {
                   objectName: "SalesFormLetter",
                   objectType: "AxClass",
@@ -364,7 +364,7 @@ export class ToolDefinitions {
                 }
               },
               {
-                description: "📋 TABLE FIELDS: Get all fields from a data table",
+                description: "TABLE FIELDS: Get all fields from a data table",
                 parameters: {
                   objectName: "CustTable",
                   objectType: "AxTable",
@@ -373,7 +373,7 @@ export class ToolDefinitions {
                 }
               },
               {
-                description: "💻 CODE EXTRACTION: Get source code from all methods",
+                description: "CODE EXTRACTION: Get source code from all methods",
                 parameters: {
                   objectName: "SalesFormLetter",
                   objectType: "AxClass",
@@ -382,7 +382,7 @@ export class ToolDefinitions {
                 }
               },
               {
-                description: "💻 SPECIFIC METHOD: Get source code for one method",
+                description: "SPECIFIC METHOD: Get source code for one method",
                 parameters: {
                   objectName: "CustTable",
                   objectType: "AxTable",
@@ -392,7 +392,7 @@ export class ToolDefinitions {
                 }
               },
               {
-                description: "💻 LIMITED CODE: Get method code with line limits",
+                description: "LIMITED CODE: Get method code with line limits",
                 parameters: {
                   objectName: "SalesTable",
                   objectType: "AxTable",
@@ -402,7 +402,7 @@ export class ToolDefinitions {
                 }
               },
               {
-                description: "🔍 FILTERED SEARCH: Find validation methods only", 
+                description: "FILTERED SEARCH: Find validation methods only", 
                 parameters: {
                   objectName: "SalesTable",
                   objectType: "AxTable",
@@ -412,7 +412,7 @@ export class ToolDefinitions {
                 }
               },
               {
-                description: "� PROPERTIES INSPECTION: Get all object properties with descriptions",
+                description: "PROPERTIES INSPECTION: Get all object properties with descriptions",
                 parameters: {
                   objectName: "CustTable",
                   objectType: "AxTable",
@@ -420,7 +420,7 @@ export class ToolDefinitions {
                 }
               },
               {
-                description: "🎯 ENUM VALUES: Get all values from an enumeration",
+                description: "ENUM VALUES: Get all values from an enumeration",
                 parameters: {
                   objectName: "CustVendNegInstProtestStatus",
                   objectType: "AxEnum",
@@ -429,7 +429,7 @@ export class ToolDefinitions {
                 }
               },
               {
-                description: "📱 FORM DATASOURCES: See form data binding structure",
+                description: "FORM DATASOURCES: See form data binding structure",
                 parameters: {
                   objectName: "CustTable",
                   objectType: "AxForm",
@@ -438,7 +438,7 @@ export class ToolDefinitions {
                 }
               },
               {
-                description: "⚡ PERFORMANCE COMPARISON: Fast summary vs properties inspection",
+                description: "PERFORMANCE COMPARISON: Fast summary vs properties inspection",
                 parameters: {
                   objectName: "SalesTable",
                   objectType: "AxTable",
@@ -489,17 +489,17 @@ export class ToolDefinitions {
             },
             examples: [
               {
-                description: "📋 SUMMARY: Get configuration summary with model names only (fast)",
+                description: "SUMMARY: Get configuration summary with model names only (fast)",
                 parameters: {}
               },
               {
-                description: "🏗️ OBJECT TYPES: Get list of all available D365 object types for creation",
+                description: "OBJECT TYPES: Get list of all available D365 object types for creation",
                 parameters: {
                   objectTypeList: true
                 }
               },
               {
-                description: "🔍 MODEL DETAILS: Get detailed information for a specific model",
+                description: "MODEL DETAILS: Get detailed information for a specific model",
                 parameters: {
                   model: "ApplicationSuite"
                 }
@@ -515,7 +515,7 @@ export class ToolDefinitions {
         },
         {
           name: "search_objects_pattern",
-          description: "Search D365 objects by name pattern using wildcards, or browse all objects in a specific model. Supports * (any characters) and ? (single character) patterns for flexible object discovery. Can also be used to browse entire models by using '*' as pattern with a model filter. Supports both human-readable text and structured JSON output for AOT tree building.",
+          description: "Search and browse D365 X++ .xml files and objects by name pattern, type, or model. Use this instead of generic file-search/grep/find tools when looking for AxClass/*.xml, AxTable/*.xml, AxForm/*.xml or any D365 AOT XML files. Supports wildcards (* and ?) for flexible discovery. Browse entire models with '*' pattern + model filter. Outputs text or structured JSON.",
           inputSchema: {
             type: "object",
             properties: {
@@ -584,7 +584,7 @@ export class ToolDefinitions {
         },
         {
           name: "discover_modification_capabilities", 
-          description: "Discover available modification methods for any D365 object type in real-time using reflection. Shows what operations (AddField, AddMethod, etc.) are possible for the specified object type.",
+          description: "Discover what edits are possible on D365 .xml metadata files before modifying them. Shows available modification methods (AddField, AddMethod, AddIndex, etc.) for any D365 object type using real-time reflection. Returns concrete types and required parameters. Always call this BEFORE using execute_object_modification to get exact method names and parameter schemas.",
           inputSchema: {
             type: "object",
             properties: {
@@ -597,19 +597,19 @@ export class ToolDefinitions {
             required: ["objectType"],
             examples: [
               {
-                description: "🔍 TABLE CAPABILITIES: Discover field types and modification methods for D365 tables",
+                description: "TABLE CAPABILITIES: Discover field types and modification methods for D365 tables",
                 parameters: {
                   objectType: "AxTable"
                 }
               },
               {
-                description: "🔍 CLASS CAPABILITIES: Discover what modifications are possible on D365 classes", 
+                description: "CLASS CAPABILITIES: Discover what modifications are possible on D365 classes", 
                 parameters: {
                   objectType: "AxClass"
                 }
               },
               {
-                description: "🔍 FORM CAPABILITIES: Discover form datasource and control types for D365 forms",
+                description: "FORM CAPABILITIES: Discover form datasource and control types for D365 forms",
                 parameters: {
                   objectType: "AxForm"
                 }
@@ -619,7 +619,7 @@ export class ToolDefinitions {
         },
         {
           name: "execute_object_modification",
-          description: "🚀 BATCH MODIFICATION TOOL: Execute one or more D365 object modifications with per-operation tracking. 🔄 ARRAY-BASED: Always uses array format for consistency - single operations use array with one element. ✅ PER-OPERATION TRACKING: Each operation returns individual success/failure status with detailed error reporting. 📋 BEST PRACTICE: **ALWAYS GROUP MULTIPLE MODIFICATIONS** targeting the same object into a single call instead of making consecutive separate calls. This is more efficient, provides better error handling, and maintains transactional integrity. Use discover_modification_capabilities first to see available methods and required parameters.",
+          description: "Edit and modify D365 .xml metadata files and X++ code (AxClass/*.xml, AxTable/*.xml, AxForm/*.xml, AxEnum/*.xml, etc.). Use this instead of generic edit_file/write_file/replace tools to modify any D365 AOT XML content. IMPORTANT: 'AddMethod'/'AddField' only CREATE NEW items - they fail with DuplicateNamedObjectException if the item already exists. To UPDATE an existing method/field, first call 'RemoveMethod'/'RemoveField' to remove it, then 'AddMethod'/'AddField' to re-add it with new content (batch both in one modifications array). Use discover_modification_capabilities to see all available methods including Remove* methods. NEVER use generic file-editing tools on D365 XML files.",
           inputSchema: {
             type: "object",
             properties: {
@@ -638,14 +638,14 @@ export class ToolDefinitions {
               },
               modifications: {
                 type: "array",
-                description: "🔄 Array of modifications to execute on the same object. Each modification is processed sequentially with individual success/failure tracking. For single operations, use array with one element. 📋 **BEST PRACTICE**: Always group ALL modifications for the same object into ONE call instead of making multiple separate calls. This provides better performance, error handling, and transactional integrity.",
+                description: "Array of modifications to execute on the same object. Each modification is processed sequentially with individual success/failure tracking. For single operations, use array with one element. **BEST PRACTICE**: Always group ALL modifications for the same object into ONE call instead of making multiple separate calls. This provides better performance, error handling, and transactional integrity.",
                 minItems: 1,
                 items: {
                   type: "object",
                   properties: {
                     methodName: {
                       type: "string",
-                      description: "Name of the modification method to execute (e.g., 'AddField', 'AddMethod', 'AddIndex'). Get exact method names from discover_modification_capabilities."
+                      description: "Name of the modification method to execute (e.g., 'AddField', 'AddMethod', 'AddIndex', 'RemoveMethod', 'RemoveField'). IMPORTANT: 'Add*' methods only create NEW items - they fail if the item already exists. To UPDATE existing items, use 'Remove*' first then 'Add*' in the same modifications array. Get exact method names from discover_modification_capabilities."
                     },
                     parameters: {
                       type: "object",
@@ -757,7 +757,7 @@ export class ToolDefinitions {
                 }
               },
               {
-                description: "🔧 Single field: Add one field using array format (only when one modification needed)",
+                description: "Single field: Add one field using array format (only when one modification needed)",
                 parameters: {
                   objectType: "AxTable",
                   objectName: "CustTable",
@@ -789,7 +789,7 @@ export class ToolDefinitions {
                 }
               },
               {
-                description: "🔧 Enum values: Add multiple values to a custom enum in one call",
+                description: "Enum values: Add multiple values to a custom enum in one call",
                 parameters: {
                   objectType: "AxEnum",
                   objectName: "MyCustomEnum",

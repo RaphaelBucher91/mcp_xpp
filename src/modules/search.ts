@@ -1,4 +1,4 @@
-import { promises as fs } from "fs";
+﻿import { promises as fs } from "fs";
 import { join, extname, relative } from "path";
 import { ObjectIndexManager } from "./object-index.js";
 import { CacheManager, searchCache } from "./cache.js";
@@ -70,7 +70,7 @@ export class SearchManager {
     try {
       await this.searchDirectory(basePath, basePath, searchTerm, searchExtensions, results, maxResults);
     } catch (error) {
-      console.error("Search error:", error);
+      console.error("[Search] Search error:", error);
     }
 
     return results;

@@ -1,4 +1,4 @@
-import { D365ServiceClient } from "./d365-service-client.js";
+﻿import { D365ServiceClient } from "./d365-service-client.js";
 import { AppConfig } from "./app-config.js";
 import { SQLiteObjectLookup, AOTMetadata } from "./sqlite-lookup.js";
 
@@ -181,17 +181,17 @@ export class AOTStructureCacheManager {
     const client = new D365ServiceClient('mcp-xpp-d365-service', 30000, 60000);
 
     try {
-      console.log('Connecting to D365 service for AOT reflection...');
+      console.log('[AotStructureCache] Connecting to D365 service for AOT reflection...');
       await client.connect();
       
-      console.log('Requesting pure reflection data...');
+      console.log('[AotStructureCache] Requesting pure reflection data...');
       const response = await client.sendRequest('aotstructure', '', {});
 
       if (!response.Success || !response.Data) {
         throw new Error(`D365 service error: ${response.Error || 'Unknown error'}`);
       }
 
-      console.log(`Retrieved ${response.Data.totalTypes} types from D365 service`);
+      console.log(`[AotStructureCache] Retrieved ${response.Data.totalTypes} types from D365 service`);
       return response.Data;
 
     } finally {
@@ -206,7 +206,7 @@ export class AOTStructureCacheManager {
    */
   async generateAOTStructureCache(): Promise<void> {
     const startTime = Date.now();
-    console.log('Generating AOT structure cache using D365 service integration...');
+    console.log('[AotStructureCache] Generating AOT structure cache using D365 service integration...');
 
     let sqliteLookup: SQLiteObjectLookup | null = null;
 
@@ -222,7 +222,7 @@ export class AOTStructureCacheManager {
       const reflectionData = await this.getReflectionDataFromService();
       
       // Step 2: Apply MCP pattern-based categorization
-      console.log('Applying pattern-based categorization...');
+      console.log('[AotStructureCache] Applying pattern-based categorization...');
       const categorizedTypes: Record<string, any> = {};
       let categorizedCount = 0;
       
@@ -251,7 +251,7 @@ export class AOTStructureCacheManager {
       });
       
       const categorizationRate = (categorizedCount / reflectionData.totalTypes * 100).toFixed(1);
-      console.log(`Categorization complete: ${categorizedCount}/${reflectionData.totalTypes} types (${categorizationRate}%)`);
+      console.log(`[AotStructureCache] Categorization complete: ${categorizedCount}/${reflectionData.totalTypes} types (${categorizationRate}%)`);
       
       // Step 3: Generate complete structure for SQLite storage
       const sortedCategories = Object.entries(categorizedTypes)
@@ -282,12 +282,12 @@ export class AOTStructureCacheManager {
       AOTStructureCacheManager.cachedStructure = aotMetadata;
       
       const endTime = Date.now() - startTime;
-      console.log(`AOT structure cache generated successfully in ${endTime}ms`);
-      console.log(`Metadata stored in SQLite database: cache/object-lookup.db`);
-      console.log(`Categories: ${Object.keys(sortedCategories).length}, Types: ${reflectionData.totalTypes}`);
+      console.log(`[AotStructureCache] AOT structure cache generated successfully in ${endTime}ms`);
+      console.log(`[AotStructureCache] Metadata stored in SQLite database: cache/object-lookup.db`);
+      console.log(`[AotStructureCache] Categories: ${Object.keys(sortedCategories).length}, Types: ${reflectionData.totalTypes}`);
       
     } catch (error) {
-      console.error('Failed to generate AOT structure cache:', error);
+      console.error('[AotStructureCache] Failed to generate AOT structure cache:', error);
       throw error;
     } finally {
       if (sqliteLookup) {

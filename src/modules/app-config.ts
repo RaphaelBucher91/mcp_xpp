@@ -1,4 +1,4 @@
-// =============================================================================
+﻿// =============================================================================
 // APPLICATION CONFIGURATION MANAGER
 // =============================================================================
 // Centralized configuration management for the MCP X++ Server
@@ -145,8 +145,8 @@ class AppConfigManager {
     let setupFromService = false;
     if (!this.config.xppPath || !this.config.xppMetadataFolder) {
       try {
-        await DiskLogger.logDebug("Attempting to get setup configuration from D365 service...");
-        console.log("Attempting to get setup configuration from D365 service (30s timeout)...");
+        await DiskLogger.logDebug("[AppConfig] Attempting to get setup configuration from D365 service...");
+        console.log("[AppConfig] Attempting to get setup configuration from D365 service (30s timeout)...");
         
         const setupInfo = await this.getSetupFromD365Service(30000); // 30 second timeout
         if (setupInfo) {
@@ -156,12 +156,12 @@ class AppConfigManager {
           this.config.vsExtensionPath = this.config.vsExtensionPath || setupInfo.ExtensionPath;
           
           setupFromService = true;
-          console.log("Setup configuration retrieved from D365 service");
-          await DiskLogger.logDebug(`Setup from D365 service: ${JSON.stringify(setupInfo, null, 2)}`);
+          console.log("[AppConfig] Setup configuration retrieved from D365 service");
+          await DiskLogger.logDebug(`[AppConfig] Setup from D365 service: ${JSON.stringify(setupInfo, null, 2)}`);
         }
       } catch (error) {
-        await DiskLogger.logDebug(`Failed to get setup from D365 service: ${error}`);
-        console.log("Could not get setup from D365 service, proceeding with available configuration");
+        await DiskLogger.logDebug(`[AppConfig] Failed to get setup from D365 service: ${error}`);
+        console.log("[AppConfig] Could not get setup from D365 service, proceeding with available configuration");
       }
     }
 
@@ -177,21 +177,21 @@ class AppConfigManager {
     if (this.config.vsExtensionPath) {
       try {
         await fs.access(this.config.vsExtensionPath);
-        await DiskLogger.logDebug(`VS extension path validated: ${this.config.vsExtensionPath}`);
+        await DiskLogger.logDebug(`[AppConfig] VS extension path validated: ${this.config.vsExtensionPath}`);
         
         // Also check if the templates subdirectory exists
         const templatesPath = join(this.config.vsExtensionPath, "Templates", "ProjectItems", "FinanceOperations", "Dynamics 365 Items");
         try {
           await fs.access(templatesPath);
-          await DiskLogger.logDebug(`VS templates directory validated: ${templatesPath}`);
+          await DiskLogger.logDebug(`[AppConfig] VS templates directory validated: ${templatesPath}`);
         } catch (error) {
           const warningMsg = `VS templates directory not found: ${templatesPath}`;
           await DiskLogger.logDebug(warningMsg);
-          console.warn(`WARNING: ${warningMsg}`);
+          console.warn(`[AppConfig] WARNING: ${warningMsg}`);
         }
       } catch (error) {
         const errorMsg = `VS extension path does not exist: ${this.config.vsExtensionPath}`;
-        await DiskLogger.logError(new Error(errorMsg), "vs-path-validation");
+        await DiskLogger.logError(new Error(errorMsg), "[AppConfig] vs-path-validation");
         throw new Error(errorMsg);
       }
     } else {
@@ -200,20 +200,20 @@ class AppConfigManager {
         const autoDetectedPath = await autoDetectVSExtensionPath();
         if (autoDetectedPath) {
           this.config.vsExtensionPath = autoDetectedPath;
-          await DiskLogger.logDebug(`VS extension path auto-detected: ${autoDetectedPath}`);
-          console.log(`Auto-detected VS extension path: ${autoDetectedPath}`);
+          await DiskLogger.logDebug(`[AppConfig] VS extension path auto-detected: ${autoDetectedPath}`);
+          console.log(`[AppConfig] Auto-detected VS extension path: ${autoDetectedPath}`);
         } else {
-          await DiskLogger.logDebug("VS extension path not provided and auto-detection failed");
-          console.log("VS extension path not provided and could not be auto-detected");
+          await DiskLogger.logDebug("[AppConfig] VS extension path not provided and auto-detection failed");
+          console.log("[AppConfig] VS extension path not provided and could not be auto-detected");
         }
       } catch (error) {
-        await DiskLogger.logDebug(`VS auto-detection failed: ${error}`);
-        console.warn(`VS auto-detection failed: ${error}`);
+        await DiskLogger.logDebug(`[AppConfig] VS auto-detection failed: ${error}`);
+        console.warn(`[AppConfig] VS auto-detection failed: ${error}`);
       }
     }
 
     // Log configuration
-    await DiskLogger.logDebug(`Configuration initialized: ${JSON.stringify(this.config, null, 2)}`);
+    await DiskLogger.logDebug(`[AppConfig] Configuration initialized: ${JSON.stringify(this.config, null, 2)}`);
   }
 
   /**
@@ -222,14 +222,14 @@ class AppConfigManager {
   private async ensureDirectoryExists(dirPath: string): Promise<void> {
     try {
       await fs.access(dirPath);
-      await DiskLogger.logDebug(`Directory exists: ${dirPath}`);
+      await DiskLogger.logDebug(`[AppConfig] Directory exists: ${dirPath}`);
     } catch {
       try {
         await fs.mkdir(dirPath, { recursive: true });
-        await DiskLogger.logDebug(`Created directory: ${dirPath}`);
+        await DiskLogger.logDebug(`[AppConfig] Created directory: ${dirPath}`);
       } catch (error) {
         const errorMsg = `Failed to create directory ${dirPath}: ${error instanceof Error ? error.message : 'Unknown error'}`;
-        await DiskLogger.logError(new Error(errorMsg), "directory-creation");
+        await DiskLogger.logError(new Error(errorMsg), "[AppConfig] directory-creation");
         throw new Error(errorMsg);
       }
     }
@@ -242,19 +242,19 @@ class AppConfigManager {
     const client = new D365ServiceClient('mcp-xpp-d365-service', timeoutMs, timeoutMs);
     
     try {
-      await DiskLogger.logDebug(`Connecting to D365 service with ${timeoutMs}ms timeout...`);
+      await DiskLogger.logDebug(`[AppConfig] Connecting to D365 service with ${timeoutMs}ms timeout...`);
       await client.connect();
       
-      await DiskLogger.logDebug("Requesting setup information from D365 service...");
+      await DiskLogger.logDebug("[AppConfig] Requesting setup information from D365 service...");
       const setupInfo = await client.getSetupInfo();
       
       await client.disconnect();
       
       if (setupInfo && setupInfo.Data) {
-        await DiskLogger.logDebug("Setup information received successfully");
+        await DiskLogger.logDebug("[AppConfig] Setup information received successfully");
         return setupInfo.Data;
       } else {
-        await DiskLogger.logDebug("Setup response received but no data available");
+        await DiskLogger.logDebug("[AppConfig] Setup response received but no data available");
         return null;
       }
     } catch (error) {
@@ -264,7 +264,7 @@ class AppConfigManager {
         // Ignore disconnect errors
       }
       
-      await DiskLogger.logDebug(`D365 service setup request failed: ${error}`);
+      await DiskLogger.logDebug(`[AppConfig] D365 service setup request failed: ${error}`);
       throw error;
     }
   }
@@ -394,7 +394,7 @@ class AppConfigManager {
       const initialized = lookup.initialize();
       
       if (!initialized) {
-        await DiskLogger.logDebug('SQLite database not available for stats');
+        await DiskLogger.logDebug('[AppConfig] SQLite database not available for stats');
         return null;
       }
       
@@ -424,7 +424,7 @@ class AppConfigManager {
       };
       
     } catch (error) {
-      await DiskLogger.logDebug(`Could not read index stats from SQLite: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      await DiskLogger.logDebug(`[AppConfig] Could not read index stats from SQLite: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return null;
     }
   }
@@ -504,7 +504,7 @@ class AppConfigManager {
     const models: ModelInfo[] = [];
     
     if (!this.config.xppPath) {
-      await DiskLogger.logDebug("XPP path not available for model enumeration (informational only)");
+      await DiskLogger.logDebug("[AppConfig] XPP path not available for model enumeration (informational only)");
       return models;
     }
 
@@ -517,7 +517,7 @@ class AppConfigManager {
       
       return models;
     } catch (error) {
-      await DiskLogger.logError(error, "getAvailableModels");
+      await DiskLogger.logError(error, "[AppConfig] getAvailableModels");
       return [];
     }
   }
@@ -552,7 +552,7 @@ class AppConfigManager {
                     models.push(modelInfo);
                   }
                 } catch (error) {
-                  await DiskLogger.logError(error, `parseModelDescriptor:${modelName}`);
+                  await DiskLogger.logError(error, `[AppConfig] parseModelDescriptor:${modelName}`);
                 }
               }
             }
@@ -628,7 +628,7 @@ class AppConfigManager {
         hasBuildArtifacts
       };
     } catch (error) {
-      await DiskLogger.logError(error, `parseModelDescriptor:${modelName}`);
+      await DiskLogger.logError(error, `[AppConfig] parseModelDescriptor:${modelName}`);
       return null;
     }
   }

@@ -1,4 +1,4 @@
-import { promises as fs } from "fs";
+﻿import { promises as fs } from "fs";
 import { join } from "path";
 import { AppConfig } from "./app-config.js";
 import { AOTStructureManager } from "./aot-structure.js";
@@ -69,7 +69,7 @@ export class ObjectCreators {
         return `ERROR: ${objectType} creation for ${objectName} failed: ${result.Message || 'Unknown error'}`;
       }
     } catch (error) {
-      await DiskLogger.logError(error, `${objectType} creation failed`);
+      await DiskLogger.logError(error, `[ObjectCreators] ${objectType} creation failed`);
       return `ERROR: ${objectType} creation for ${objectName} failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
   }
@@ -105,7 +105,7 @@ export class ObjectCreators {
         throw new Error(result.Message || 'Model creation failed');
       }
     } catch (error) {
-      await DiskLogger.logError(error, 'Model creation failed');
+      await DiskLogger.logError(error, '[ObjectCreators] Model creation failed');
       throw new Error(`Failed to create model: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -132,7 +132,7 @@ export class ObjectCreators {
         return `ERROR: Class creation for ${className} failed: ${result.Message || 'Unknown error'}`;
       }
     } catch (error) {
-      await DiskLogger.logError(error, 'Class creation failed');
+      await DiskLogger.logError(error, '[ObjectCreators] Class creation failed');
       return `ERROR: Class creation for ${className} failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
   }
@@ -159,7 +159,7 @@ export class ObjectCreators {
         return `ERROR: Table creation for ${tableName} failed: ${result.Message || 'Unknown error'}`;
       }
     } catch (error) {
-      await DiskLogger.logError(error, 'Table creation failed');
+      await DiskLogger.logError(error, '[ObjectCreators] Table creation failed');
       return `ERROR: Table creation for ${tableName} failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
   }
@@ -186,7 +186,7 @@ export class ObjectCreators {
         return `ERROR: Enum creation for ${enumName} failed: ${result.Message || 'Unknown error'}`;
       }
     } catch (error) {
-      await DiskLogger.logError(error, 'Enum creation failed');
+      await DiskLogger.logError(error, '[ObjectCreators] Enum creation failed');
       return `ERROR: Enum creation for ${enumName} failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
   }
@@ -213,7 +213,7 @@ export class ObjectCreators {
         return `ERROR: Form creation for ${formName} failed: ${result.Message || 'Unknown error'}`;
       }
     } catch (error) {
-      await DiskLogger.logError(error, 'Form creation failed');
+      await DiskLogger.logError(error, '[ObjectCreators] Form creation failed');
       return `ERROR: Form creation for ${formName} failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
   }
@@ -250,7 +250,7 @@ export class ObjectCreators {
         };
       }
     } catch (error) {
-      await DiskLogger.logError(error, `Parameter discovery failed for ${objectType}`);
+      await DiskLogger.logError(error, `[ObjectCreators] Parameter discovery failed for ${objectType}`);
       return {
         success: false,
         errorMessage: error instanceof Error ? error.message : 'Unknown error'

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Real-time XML Element Validation Module
  * 
  * Uses confirmed Microsoft API values for D365 object validation
@@ -46,9 +46,9 @@ export class XmlElementValidator {
       this.apiValues = JSON.parse(content);
       this.lastLoadTime = now;
       
-      await DiskLogger.logDebug('Loaded Microsoft API confirmed values for validation');
+      await DiskLogger.logDebug('[XmlValidator] Loaded Microsoft API confirmed values for validation');
     } catch (error) {
-      await DiskLogger.logError(error, 'Failed to load Microsoft API values');
+      await DiskLogger.logError(error, '[XmlValidator] Failed to load Microsoft API values');
       throw new Error('Cannot load Microsoft API validation data');
     }
   }

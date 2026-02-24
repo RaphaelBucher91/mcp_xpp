@@ -1,4 +1,4 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+﻿import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import express, { Request, Response } from "express";
 import cors from "cors";
@@ -62,9 +62,9 @@ export class TransportManager {
     try {
       const transport = new StdioServerTransport();
       await this.server.connect(transport);
-      await DiskLogger.logDebug("MCP X++ Server started with STDIO transport");
+      await DiskLogger.logDebug("[Transport] MCP X++ Server started with STDIO transport");
     } catch (error) {
-      await DiskLogger.logError(error, "STDIO transport startup");
+      await DiskLogger.logError(error, "[Transport] STDIO transport startup");
       throw new Error(`Failed to start STDIO transport: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -99,12 +99,12 @@ export class TransportManager {
       const { port, host = '0.0.0.0' } = this.config.http;
       
       this.httpServer = this.expressApp.listen(port, host, () => {
-        DiskLogger.logDebug(`🌐 MCP X++ Server HTTP transport listening on ${host}:${port}`);
+        DiskLogger.logDebug(`[Transport] MCP X++ Server HTTP transport listening on ${host}:${port}`);
       });
 
-      await DiskLogger.logDebug(`MCP X++ Server started with HTTP transport on ${host}:${port}`);
+      await DiskLogger.logDebug(`[Transport] MCP X++ Server started with HTTP transport on ${host}:${port}`);
     } catch (error) {
-      await DiskLogger.logError(error, "HTTP transport startup");
+      await DiskLogger.logError(error, "[Transport] HTTP transport startup");
       throw new Error(`Failed to start HTTP transport: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -118,11 +118,11 @@ export class TransportManager {
     // Tools list endpoint
     this.expressApp.get('/mcp/tools', async (req: Request, res: Response) => {
       try {
-        await DiskLogger.logDebug("HTTP request: GET /mcp/tools");
+        await DiskLogger.logDebug("[Transport] HTTP request: GET /mcp/tools");
         const toolsResponse = await ToolDefinitions.getToolDefinitions();
         res.json(toolsResponse);
       } catch (error) {
-        await DiskLogger.logError(error, "HTTP tools list");
+        await DiskLogger.logError(error, "[Transport] HTTP tools list");
         res.status(500).json({ 
           error: error instanceof Error ? error.message : "Unknown error" 
         });
@@ -136,12 +136,12 @@ export class TransportManager {
         const { arguments: args = {} } = req.body;
         const requestId = `http-${Date.now()}`;
 
-        await DiskLogger.logDebug(`HTTP request: POST /mcp/tools/${toolName}`);
+        await DiskLogger.logDebug(`[Transport] HTTP request: POST /mcp/tools/${toolName}`);
 
         const result = await this.executeToolCall(toolName, args, requestId);
         res.json(result);
       } catch (error) {
-        await DiskLogger.logError(error, `HTTP tool call: ${req.params.toolName}`);
+        await DiskLogger.logError(error, `[Transport] HTTP tool call: ${req.params.toolName}`);
         
         if (error instanceof McpError) {
           res.status(400).json({ 
@@ -161,7 +161,7 @@ export class TransportManager {
       try {
         const { method, params, id = `http-${Date.now()}` } = req.body;
         
-        await DiskLogger.logDebug(`HTTP RPC request: ${method}`);
+        await DiskLogger.logDebug(`[Transport] HTTP RPC request: ${method}`);
 
         if (method === "tools/list") {
           const result = await ToolDefinitions.getToolDefinitions();
@@ -177,7 +177,7 @@ export class TransportManager {
           });
         }
       } catch (error) {
-        await DiskLogger.logError(error, `HTTP RPC call: ${req.body.method}`);
+        await DiskLogger.logError(error, `[Transport] HTTP RPC call: ${req.body.method}`);
         
         if (error instanceof McpError) {
           res.status(400).json({ 
@@ -264,7 +264,7 @@ export class TransportManager {
     }
 
     await Promise.all(promises);
-    await DiskLogger.logDebug("🛑 MCP X++ Server transports stopped");
+    await DiskLogger.logDebug("[Transport] MCP X++ Server transports stopped");
   }
 
   /**

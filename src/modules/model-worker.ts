@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Worker thread for processing individual D365 models
  * Each worker connects to the C# service and processes one model independently
  */
@@ -42,7 +42,7 @@ if (!isMainThread && parentPort) {
         };
 
         try {
-            console.log(`🔍 Worker processing model: ${task.modelName}`);
+            console.log(`[ModelWorker] Worker processing model: ${task.modelName}`);
             
             // Create independent connection to C# service
             const client = new D365ServiceClient();
@@ -60,7 +60,7 @@ if (!isMainThread && parentPort) {
 
                 const modelData = response.Data.models[0];
                 if (!modelData || !modelData.objects) {
-                    console.log(`   ⚠️  No objects found in model ${task.modelName}`);
+                    console.log(`[ModelWorker]     No objects found in model ${task.modelName}`);
                     result.success = true;
                     result.processingTime = Date.now() - startTime;
                     parentPort!.postMessage(result);
@@ -89,7 +89,7 @@ if (!isMainThread && parentPort) {
                 result.success = true;
                 result.processingTime = Date.now() - startTime;
 
-                console.log(`   ✅ Worker completed ${task.modelName}: ${result.objectCount} objects (${result.processingTime}ms)`);
+                console.log(`[ModelWorker]    Worker completed ${task.modelName}: ${result.objectCount} objects (${result.processingTime}ms)`);
                 
             } finally {
                 await client.disconnect();
@@ -97,7 +97,7 @@ if (!isMainThread && parentPort) {
         } catch (error) {
             result.error = (error as Error).message;
             result.processingTime = Date.now() - startTime;
-            console.error(`   ❌ Worker error processing ${task.modelName}:`, result.error);
+            console.error(`[ModelWorker]    Worker error processing ${task.modelName}:`, result.error);
         }
 
         // Send result back to main thread
@@ -105,7 +105,7 @@ if (!isMainThread && parentPort) {
     }
 
     processModel().catch(error => {
-        console.error(`💥 Worker fatal error for ${task.modelName}:`, error);
+        console.error(`[ModelWorker] Worker fatal error for ${task.modelName}:`, error);
         process.exit(1);
     });
 }

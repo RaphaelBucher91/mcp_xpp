@@ -1,4 +1,4 @@
-import { promises as fs } from "fs";
+﻿import { promises as fs } from "fs";
 import { join } from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
@@ -27,7 +27,7 @@ export class DiskLogger {
     try {
       await fs.mkdir(LOG_DIR, { recursive: true });
     } catch (error) {
-      console.error(`Failed to create log directory ${LOG_DIR}:`, error);
+      console.error(`[Logger] Failed to create log directory ${LOG_DIR}:`, error);
     }
   }
 
@@ -36,7 +36,7 @@ export class DiskLogger {
       await this.ensureLogDirectory();
       await fs.appendFile(filePath, content + '\n');
     } catch (error) {
-      console.error(`Failed to write to log file ${filePath}:`, error);
+      console.error(`[Logger] Failed to write to log file ${filePath}:`, error);
     }
   }
 
@@ -64,7 +64,7 @@ export class DiskLogger {
     const logLine = `[${entry.timestamp}] REQUEST ID:${entry.id} METHOD:${entry.method} SIZE:${entry.size}b\n${JSON.stringify(request, null, 2)}\n${'='.repeat(80)}`;
     
     await this.appendToFile(LOG_FILE_REQUESTS, logLine);
-    await this.logDebug(`📤 REQUEST: ${entry.method} (ID:${entry.id}, ${entry.size} bytes)`);
+    await this.logDebug(`REQUEST: ${entry.method} (ID:${entry.id}, ${entry.size} bytes)`);
   }
 
   static async logResponse(response: any, requestId?: string | number): Promise<void> {
@@ -75,7 +75,7 @@ export class DiskLogger {
     const logLine = `[${entry.timestamp}] RESPONSE ID:${entry.id} SIZE:${entry.size}b\n${JSON.stringify(response, null, 2)}\n${'='.repeat(80)}`;
     
     await this.appendToFile(LOG_FILE_RESPONSES, logLine);
-    await this.logDebug(`📥 RESPONSE: ID:${entry.id} (${entry.size} bytes)`);
+    await this.logDebug(`RESPONSE: ID:${entry.id} (${entry.size} bytes)`);
   }
 
   static async logError(error: any, context?: string): Promise<void> {
@@ -116,11 +116,11 @@ ${'='.repeat(100)}
       await fs.writeFile(LOG_FILE_RESPONSES, startupMessage);
       await fs.writeFile(LOG_FILE_DEBUG, startupMessage);
     } catch (error) {
-      console.error('Failed to initialize log files:', error);
+      console.error('[Logger] Failed to initialize log files:', error);
     }
     
-    console.error('MCP X++ Server logging initialized');
-    console.error(`Logs writing to: ${LOG_DIR}`);
+    console.error('[Logger] MCP X++ Server logging initialized');
+    console.error(`[Logger] Logs writing to: ${LOG_DIR}`);
   }
 }
 

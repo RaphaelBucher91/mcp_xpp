@@ -1,4 +1,4 @@
-import { z } from "zod";
+﻿import { z } from "zod";
 import { join } from "path";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { createLoggedResponse } from "./logger.js";
@@ -18,22 +18,22 @@ export class ToolHandlers {
 
   static async createXppObject(args: any, requestId: string): Promise<any> {
     // DEBUG: Let's see what we actually receive
-    console.log('🔍 DEBUG createXppObject received args:', JSON.stringify(args, null, 2));
+    console.log('[ToolHandlers] DEBUG createXppObject received args:', JSON.stringify(args, null, 2));
     
     // Handle the client's argument wrapping - check both direct args and wrapped args
     const actualArgs = args?.arguments || args;
-    console.log('🔍 DEBUG actualArgs after unwrapping:', JSON.stringify(actualArgs, null, 2));
+    console.log('[ToolHandlers] DEBUG actualArgs after unwrapping:', JSON.stringify(actualArgs, null, 2));
     
     // Special case: if no args provided, return cached object types
     if (!actualArgs || Object.keys(actualArgs).length === 0) {
-      console.log('📋 No parameters provided, returning cached object types from index...');
+      console.log('[ToolHandlers] No parameters provided, returning cached object types from index...');
       
       try {
         const cachedTypes = await ObjectIndexManager.getCachedObjectTypes();
         
         if (cachedTypes.length === 0) {
           return await createLoggedResponse(
-            "❌ No object types cached. Please run build_object_index first to cache object types from D365 service.",
+            "No object types cached. Please run build_object_index first to cache object types from D365 service.",
             requestId,
             "create_xpp_object"
           );
@@ -98,7 +98,7 @@ export class ToolHandlers {
         
       } catch (error) {
         return await createLoggedResponse(
-          `❌ Error retrieving cached object types: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          `Error retrieving cached object types: ${error instanceof Error ? error.message : 'Unknown error'}`,
           requestId,
           "create_xpp_object"
         );
@@ -125,34 +125,34 @@ export class ToolHandlers {
     if (params.discoverParameters) {
       if (!params.objectType) {
         return await createLoggedResponse(
-          "❌ Parameter discovery requires objectType to be specified.\n\n" +
+          "Parameter discovery requires objectType to be specified.\n\n" +
           "Example: { \"objectType\": \"AxTable\", \"discoverParameters\": true }",
           requestId,
           "create_xpp_object"
         );
       }
       
-      console.log(`🔍 Discovering parameters for object type: ${params.objectType}`);
+      console.log(`[ToolHandlers] Discovering parameters for object type: ${params.objectType}`);
       
       try {
         const discoveryResult = await ObjectCreators.discoverParameters(params.objectType);
         
         if (!discoveryResult.success) {
           return await createLoggedResponse(
-            `❌ Parameter discovery failed: ${discoveryResult.errorMessage}`,
+            `Parameter discovery failed: ${discoveryResult.errorMessage}`,
             requestId,
             "create_xpp_object"
           );
         }
         
         const schema = discoveryResult.schema.ParameterSchema;
-        let content = `🔍 Parameter Discovery for ${params.objectType}\n`;
+        let content = `Parameter Discovery for ${params.objectType}\n`;
         content += `Found ${schema.ParameterCount} creation-relevant parameters\n`;
         content += `Discovery time: ${discoveryResult.discoveryTime}ms\n\n`;
         
         // Show required parameters
         if (schema.Required && schema.Required.length > 0) {
-          content += `✅ Required Parameters (${schema.Required.length}):\n`;
+          content += `Required Parameters (${schema.Required.length}):\n`;
           schema.Required.forEach((paramName: string) => {
             const param = schema.Parameters[paramName];
             content += `  • ${paramName}: ${param.Type}\n`;
@@ -165,7 +165,7 @@ export class ToolHandlers {
         
         // Show recommended parameters
         if (schema.Recommended && schema.Recommended.length > 0) {
-          content += `⭐ Recommended Parameters (${schema.Recommended.length}):\n`;
+          content += `Recommended Parameters (${schema.Recommended.length}):\n`;
           schema.Recommended.forEach((paramName: string) => {
             const param = schema.Parameters[paramName];
             content += `  • ${paramName}: ${param.Type}\n`;
@@ -193,7 +193,7 @@ export class ToolHandlers {
         );
         
         if (otherParams.length > 0) {
-          content += `📋 Other Available Parameters (${otherParams.length}):\n`;
+          content += `Other Available Parameters (${otherParams.length}):\n`;
           otherParams.slice(0, 10).forEach(paramName => {
             const param = schema.Parameters[paramName];
             content += `  • ${paramName}: ${param.Type}`;
@@ -208,10 +208,10 @@ export class ToolHandlers {
         
         // Show usage patterns if available
         if (schema.UsagePatterns && Object.keys(schema.UsagePatterns).length > 0) {
-          content += `🎯 Usage Patterns:\n`;
+          content += `Usage Patterns:\n`;
           Object.entries(schema.UsagePatterns).forEach(([patternName, patternData]) => {
             const pattern = patternData as any; // Type assertion for unknown pattern structure
-            content += `  📐 ${patternName}: ${pattern.description || 'Usage pattern'}\n`;
+            content += `  ${patternName}: ${pattern.description || 'Usage pattern'}\n`;
             if (pattern.scenarios && pattern.scenarios.length > 0) {
               content += `    Scenarios: ${pattern.scenarios.slice(0, 3).join(', ')}\n`;
             }
@@ -219,7 +219,7 @@ export class ToolHandlers {
           content += '\n';
         }
         
-        content += `💡 To create an object with parameters:\n`;
+        content += `To create an object with parameters:\n`;
         content += `{\n`;
         content += `  "objectType": "${params.objectType}",\n`;
         content += `  "objectName": "MyCustomObject",\n`;
@@ -235,7 +235,7 @@ export class ToolHandlers {
         
       } catch (error) {
         return await createLoggedResponse(
-          `❌ Parameter discovery error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          `Parameter discovery error: ${error instanceof Error ? error.message : 'Unknown error'}`,
           requestId,
           "create_xpp_object"
         );
@@ -245,7 +245,7 @@ export class ToolHandlers {
     // Regular object creation flow - require objectName and objectType
     if (!params.objectName || !params.objectType) {
       return await createLoggedResponse(
-        "❌ Object creation requires both objectName and objectType parameters.\n\n" +
+        "Object creation requires both objectName and objectType parameters.\n\n" +
         "For parameter discovery, use: { \"objectType\": \"AxTable\", \"discoverParameters\": true }\n" +
         "For object creation, use: { \"objectName\": \"MyTable\", \"objectType\": \"AxTable\" }",
         requestId,
@@ -256,16 +256,16 @@ export class ToolHandlers {
     // Check if this is a form creation request - redirect to specialized form tool
     if (params.objectType === 'AxForm' || params.objectType?.toLowerCase().includes('form')) {
       return await createLoggedResponse(
-        `🎯 Form creation detected! For enhanced form creation with datasource and pattern support, use the specialized 'create_form' tool instead.\n\n` +
+        `Form creation detected! For enhanced form creation with datasource and pattern support, use the specialized 'create_form' tool instead.\n\n` +
         `Examples:\n` +
-        `📝 Create form with datasources:\n` +
+        `Create form with datasources:\n` +
         `{\n` +
         `  "mode": "create",\n` +
         `  "name": "${params.objectName}",\n` +
         `  "datasources": ["Table1", "Table2"],\n` +
         `  "pattern": "SimpleList"\n` +
         `}\n\n` +
-        `📋 Discover available patterns:\n` +
+        `Discover available patterns:\n` +
         `{\n` +
         `  "mode": "list_patterns"\n` +
         `}\n\n` +
@@ -281,7 +281,7 @@ export class ToolHandlers {
     }
 
     // Note: xppPath no longer required - D365 service handles all operations
-    console.log(`Creating ${params.objectType} '${params.objectName}' using direct D365 service integration...`);
+    console.log(`[ToolHandlers] Creating ${params.objectType} '${params.objectName}' using direct D365 service integration...`);
     
     let content: string;
     const startTime = Date.now();
@@ -311,13 +311,13 @@ export class ToolHandlers {
         );
         
         if (indexSuccess) {
-          content += `\n🔍 Object added to search index - immediately searchable`;
+          content += `\nObject added to search index - immediately searchable`;
         } else {
-          content += `\n⚠️  Object created but not added to search index`;
+          content += `\n Object created but not added to search index`;
         }
       } catch (indexError) {
-        console.warn(`Failed to add object to search index: ${indexError}`);
-        content += `\n⚠️  Object created but search index update failed`;
+        console.warn(`[ToolHandlers] Failed to add object to search index: ${indexError}`);
+        content += `\n Object created but search index update failed`;
       }
       
       const executionTime = Date.now() - startTime;
@@ -339,7 +339,7 @@ export class ToolHandlers {
   }
 
   static async createForm(args: any, requestId: string): Promise<any> {
-    console.log('🎯 Starting createForm with args:', JSON.stringify(args, null, 2));
+    console.log('[ToolHandlers] Starting createForm with args:', JSON.stringify(args, null, 2));
     
     const actualArgs = args?.arguments || args;
     
@@ -359,7 +359,7 @@ export class ToolHandlers {
     if (!validationResult.success) {
       const errors = validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
       return await createLoggedResponse(
-        `❌ Invalid parameters: ${errors}`,
+        `Invalid parameters: ${errors}`,
         requestId,
         "create_form"
       );
@@ -372,27 +372,27 @@ export class ToolHandlers {
       const { D365ServiceClient } = await import('./d365-service-client.js');
       const client = new D365ServiceClient('mcp-xpp-d365-service', 10000, 60000);
       
-      console.log('🔗 Connecting to D365 service...');
+      console.log('[ToolHandlers] Connecting to D365 service...');
       await client.connect();
-      console.log('✅ Connected to D365 service');
+      console.log('[ToolHandlers] Connected to D365 service');
 
       let response;
 
       if (params.mode === "list_patterns") {
         // Handle pattern discovery
-        console.log('🔍 Discovering available patterns...');
+        console.log('[ToolHandlers] Discovering available patterns...');
         response = await client.sendRequest('discover_patterns', undefined, {});
       } else if (params.mode === "create") {
         // Handle form creation
         if (!params.formName) {
           return await createLoggedResponse(
-            "❌ formName is required when mode='create'",
+            "formName is required when mode='create'",
             requestId,
             "create_form"
           );
         }
         
-        console.log(`🏗️ Creating form: ${params.formName}`);
+        console.log(`[ToolHandlers] Creating form: ${params.formName}`);
         
         const formParams = {
           formName: params.formName,
@@ -407,7 +407,7 @@ export class ToolHandlers {
 
       // Always disconnect
       await client.disconnect();
-      console.log('🔌 Disconnected from D365 service');
+      console.log('[ToolHandlers] Disconnected from D365 service');
 
       if (params.mode === "list_patterns") {
         return await ToolHandlers.formatPatternListResponse(response, requestId);
@@ -418,7 +418,7 @@ export class ToolHandlers {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       return await createLoggedResponse(
-        `❌ Failed to ${params.mode === 'list_patterns' ? 'discover patterns' : 'create form'}: ${errorMsg}`,
+        `Failed to ${params.mode === 'list_patterns' ? 'discover patterns' : 'create form'}: ${errorMsg}`,
         requestId,
         "create_form"
       );
@@ -427,19 +427,19 @@ export class ToolHandlers {
 
   private static async formatPatternListResponse(response: any, requestId: string): Promise<any> {
     if (response?.Success && response?.Data) {
-      let content = "🎯 **Available D365 Form Patterns**\n\n";
+      let content = "**Available D365 Form Patterns**\n\n";
       
       if (response.Data.Patterns && response.Data.Patterns.length > 0) {
         content += `Found ${response.Data.Patterns.length} available patterns:\n\n`;
         
         response.Data.Patterns.forEach((pattern: any, index: number) => {
           content += `**${index + 1}. ${pattern.Name}**\n`;
-          if (pattern.Version) content += `   📋 Version: ${pattern.Version}\n`;
-          if (pattern.Description) content += `   📝 ${pattern.Description}\n`;
+          if (pattern.Version) content += `   Version: ${pattern.Version}\n`;
+          if (pattern.Description) content += `   ${pattern.Description}\n`;
           content += `\n`;
         });
         
-        content += "\n💡 **Usage Example:**\n";
+        content += "\n**Usage Example:**\n";
         content += "```json\n";
         content += '{\n  "mode": "create",\n  "formName": "MyCustomForm",\n  "patternName": "SimpleListDetails",\n  "dataSources": ["CustTable"]\n}\n';
         content += "```\n";
@@ -450,7 +450,7 @@ export class ToolHandlers {
       return await createLoggedResponse(content, requestId, "create_form");
     } else {
       return await createLoggedResponse(
-        `❌ Pattern discovery failed: ${response?.Error || 'Unknown error'}`,
+        `Pattern discovery failed: ${response?.Error || 'Unknown error'}`,
         requestId,
         "create_form"
       );
@@ -458,22 +458,22 @@ export class ToolHandlers {
   }
 
   private static async formatFormCreationResponse(response: any, requestId: string): Promise<any> {
-    console.log('🐛 DEBUG: formatFormCreationResponse called with response:', JSON.stringify(response, null, 2));
+    console.log('[ToolHandlers] DEBUG: formatFormCreationResponse called with response:', JSON.stringify(response, null, 2));
     
     if (response?.Success && response?.Data?.Success) {
-      console.log('🐛 DEBUG: Entering success path');
-      let content = `✅ **Form Created Successfully**\n\n`;
-      content += `📄 **Form Name:** ${response.Data.FormName}\n`;
-      content += `📦 **Model:** ${response.Data.Model}\n`;
-      content += `🎨 **Pattern:** ${response.Data.Pattern} ${response.Data.PatternVersion}\n`;
-      content += `✨ **Pattern Applied:** ${response.Data.PatternApplied ? 'Yes' : 'No'}\n`;
+      console.log('[ToolHandlers] DEBUG: Entering success path');
+      let content = `**Form Created Successfully**\n\n`;
+      content += `**Form Name:** ${response.Data.FormName}\n`;
+      content += `**Model:** ${response.Data.Model}\n`;
+      content += `**Pattern:** ${response.Data.Pattern} ${response.Data.PatternVersion}\n`;
+      content += `**Pattern Applied:** ${response.Data.PatternApplied ? 'Yes' : 'No'}\n`;
       
       if (response.Data.DataSources && response.Data.DataSources.length > 0) {
-        content += `🗄️ **DataSources:** ${response.Data.DataSources.length} added (${response.Data.DataSources.join(', ')})\n`;
-        content += `📊 **DataSources Added:** ${response.Data.DataSourcesAdded}/${response.Data.DataSources.length}\n`;
+        content += `**DataSources:** ${response.Data.DataSources.length} added (${response.Data.DataSources.join(', ')})\n`;
+        content += `**DataSources Added:** ${response.Data.DataSourcesAdded}/${response.Data.DataSources.length}\n`;
       }
       
-      content += `\n💬 **Message:** ${response.Data.Message}\n`;
+      content += `\n**Message:** ${response.Data.Message}\n`;
       
       // Add form to search index for immediate searchability (same as create_xpp_object)
       try {
@@ -481,7 +481,7 @@ export class ToolHandlers {
         const formName = response.Data.FormName;
         const filePath = `${model}/AxForm/${formName}`;
         
-        console.log(`🔍 Attempting to add form to index: ${formName} (AxForm) in model ${model} at ${filePath}`);
+        console.log(`[ToolHandlers] Attempting to add form to index: ${formName} (AxForm) in model ${model} at ${filePath}`);
         
         const indexSuccess = await ObjectIndexManager.addObjectToIndex(
           formName,
@@ -490,22 +490,22 @@ export class ToolHandlers {
           filePath
         );
         
-        console.log(`🔍 Index operation result: ${indexSuccess}`);
+        console.log(`[ToolHandlers] Index operation result: ${indexSuccess}`);
         
         if (indexSuccess) {
-          content += `\n🔍 Form added to search index - immediately searchable`;
+          content += `\nForm added to search index - immediately searchable`;
         } else {
-          content += `\n⚠️  Form created but not added to search index`;
+          content += `\n Form created but not added to search index`;
         }
       } catch (indexError) {
-        console.warn(`Failed to add form to search index: ${indexError}`);
-        content += `\n⚠️  Form created but search index update failed: ${indexError instanceof Error ? indexError.message : String(indexError)}`;
+        console.warn(`[ToolHandlers] Failed to add form to search index: ${indexError}`);
+        content += `\n Form created but search index update failed: ${indexError instanceof Error ? indexError.message : String(indexError)}`;
       }
       
       return await createLoggedResponse(content, requestId, "create_form");
     } else {
       return await createLoggedResponse(
-        `❌ Form creation failed: ${response?.Error || response?.Data?.Message || 'Unknown error'}`,
+        `Form creation failed: ${response?.Error || response?.Data?.Message || 'Unknown error'}`,
         requestId,
         "create_form"
       );
@@ -523,13 +523,13 @@ export class ToolHandlers {
     try {
       const { objectName, objectType, cascadeDelete } = schema.parse(args);
       
-      console.log(`🗑️ Deleting D365 object: ${objectName} (${objectType}), cascade: ${cascadeDelete || false}`);
+      console.log(`[ToolHandlers] Deleting D365 object: ${objectName} (${objectType}), cascade: ${cascadeDelete || false}`);
       
       // Let C# service validate object existence - don't pre-validate in cache
-      console.log(`📡 Sending delete request to C# service for ${objectName} (${objectType})`);
+      console.log(`[ToolHandlers] Sending delete request to C# service for ${objectName} (${objectType})`);
 
       // Use D365ServiceClient to communicate via named pipe
-      console.log(`🔄 Connecting to D365 service to delete object: ${objectName} (${objectType})`);
+      console.log(`[ToolHandlers] Connecting to D365 service to delete object: ${objectName} (${objectType})`);
       
       // Import D365ServiceClient dynamically (consistent with other handlers)
       const { D365ServiceClient } = await import('./d365-service-client.js');
@@ -545,16 +545,16 @@ export class ToolHandlers {
       await client.disconnect();
       
       if (response.Success) {
-        console.log(`✅ Object deleted successfully: ${objectName} (${objectType})`);
+        console.log(`[ToolHandlers] Object deleted successfully: ${objectName} (${objectType})`);
         
         // Update cache by removing the deleted object
         const sqliteLookup = new SQLiteObjectLookup();
         const cacheUpdateSuccess = sqliteLookup.deleteObject(objectName, objectType);
         
-        let content = `✅ **Successfully deleted object:** ${objectName} (${objectType})\n\n`;
+        let content = `**Successfully deleted object:** ${objectName} (${objectType})\n\n`;
         
         if (response.Data?.ObjectsDeleted?.length > 0) {
-          content += `📋 **Objects Deleted:**\n`;
+          content += `**Objects Deleted:**\n`;
           response.Data.ObjectsDeleted.forEach((obj: string) => {
             content += `  • ${obj}\n`;
           });
@@ -562,7 +562,7 @@ export class ToolHandlers {
         }
         
         if (response.Data?.DependenciesFound?.length > 0) {
-          content += `⚠️ **Dependencies Found (but deletion succeeded):**\n`;
+          content += `**Dependencies Found (but deletion succeeded):**\n`;
           response.Data.DependenciesFound.forEach((dep: any) => {
             content += `  • ${dep.Name} (${dep.Type})\n`;
           });
@@ -570,31 +570,31 @@ export class ToolHandlers {
         }
         
         if (response.Data?.Warnings?.length > 0) {
-          content += `⚠️ **Warnings:**\n`;
+          content += `**Warnings:**\n`;
           response.Data.Warnings.forEach((warning: string) => {
             content += `  • ${warning}\n`;
           });
           content += `\n`;
         }
         
-        content += `🔄 **Cache Update:** ${cacheUpdateSuccess ? 'Success' : 'Failed'}\n`;
-        content += `💬 **Message:** ${response.Data?.Message || 'Object deleted successfully'}\n`;
+        content += `**Cache Update:** ${cacheUpdateSuccess ? 'Success' : 'Failed'}\n`;
+        content += `**Message:** ${response.Data?.Message || 'Object deleted successfully'}\n`;
         
         return await createLoggedResponse(content, requestId, "delete_xpp_object");
       } else {
-        let content = `❌ **Deletion failed:** ${response.Data?.Message || 'Unknown error'}\n\n`;
+        let content = `**Deletion failed:** ${response.Data?.Message || 'Unknown error'}\n\n`;
         
         if (response.Data?.DependenciesFound?.length > 0) {
-          content += `🔗 **Dependencies prevent deletion:**\n`;
+          content += `**Dependencies prevent deletion:**\n`;
           response.Data.DependenciesFound.forEach((dep: any) => {
             content += `  • ${dep.Name} (${dep.Type}) - ${dep.Description || 'References this object'}\n`;
           });
           content += `\n`;
-          content += `💡 **Suggestion:** Remove dependencies first, or use cascadeDelete: true to delete dependent objects.\n`;
+          content += `**Suggestion:** Remove dependencies first, or use cascadeDelete: true to delete dependent objects.\n`;
         }
         
         if (response.Data?.Errors?.length > 0) {
-          content += `❌ **Errors:**\n`;
+          content += `**Errors:**\n`;
           response.Data.Errors.forEach((error: string) => {
             content += `  • ${error}\n`;
           });
@@ -604,11 +604,11 @@ export class ToolHandlers {
       }
       
     } catch (error) {
-      console.error('❌ Error in deleteXppObject:', error);
+      console.error('[ToolHandlers] Error in deleteXppObject:', error);
       
       if (error instanceof z.ZodError) {
         const issues = error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join(', ');
-        throw new McpError(ErrorCode.InvalidParams, `❌ Invalid parameters: ${issues}`);
+        throw new McpError(ErrorCode.InvalidParams, `Invalid parameters: ${issues}`);
       }
       
       if (error instanceof McpError) {
@@ -617,7 +617,7 @@ export class ToolHandlers {
       
       throw new McpError(
         ErrorCode.InternalError,
-        `❌ Error deleting object: ${error instanceof Error ? error.message : String(error)}`
+        `Error deleting object: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }
@@ -795,16 +795,16 @@ export class ToolHandlers {
 
   // Format inspection results based on inspection mode
   static formatInspectionResult(inspectionMode: string, objectName: string, data: any, filterPattern?: string, collectionName?: string): string {
-    let content = `🔍 Object Inspection for "${objectName}" (${inspectionMode} mode)`;
+    let content = `Object Inspection for "${objectName}" (${inspectionMode} mode)`;
     if (filterPattern) {
       content += ` (filtered by: ${filterPattern})`;
     }
     content += `\n\n`;
 
     if (!data || (data.Found === false)) {
-      content += `❌ Object not found: ${data?.Error || 'Object does not exist'}\n`;
+      content += `Object not found: ${data?.Error || 'Object does not exist'}\n`;
       if (data?.SearchedTypes) {
-        content += `\n🔍 Searched object types: ${data.SearchedTypes.join(', ')}\n`;
+        content += `\nSearched object types: ${data.SearchedTypes.join(', ')}\n`;
       }
       return content;
     }
@@ -825,23 +825,23 @@ export class ToolHandlers {
 
   // Format summary mode result
   static formatSummaryResult(content: string, objectName: string, data: any): string {
-    content += `✅ Object Summary: ${data.ObjectType} "${data.ObjectName}"\n\n`;
+    content += `Object Summary: ${data.ObjectType} "${data.ObjectName}"\n\n`;
     
     if (data.Summary) {
-      content += `📊 Overview:\n`;
+      content += `Overview:\n`;
       content += `   Properties: ${data.Summary.PropertiesCount || 0}\n`;
       content += `   Collections: ${data.Summary.CollectionsCount || 0}\n`;
       content += `   Total Collection Items: ${data.Summary.TotalCollectionItems || 0}\n\n`;
     }
 
     if (data.Collections) {
-      content += `📋 Available Collections:\n`;
+      content += `Available Collections:\n`;
       for (const [collectionName, collectionInfo] of Object.entries(data.Collections) as [string, any][]) {
         content += `   ${collectionName}: ${collectionInfo.Count} ${collectionInfo.ItemType}`;
-        content += collectionInfo.Available ? ` ✅` : ` ❌`;
+        content += collectionInfo.Available ? ` ` : ` `;
         content += `\n`;
       }
-      content += `\n💡 Use inspectionMode="properties" to see all properties, or inspectionMode="collection" with collectionName to see specific collections.\n`;
+      content += `\nUse inspectionMode="properties" to see all properties, or inspectionMode="collection" with collectionName to see specific collections.\n`;
     }
 
     return content;
@@ -849,12 +849,12 @@ export class ToolHandlers {
 
   // Format properties mode result with enhanced descriptions
   static formatPropertiesResult(content: string, objectName: string, data: any): string {
-    content += `✅ Object Properties: ${data.ObjectType} "${data.ObjectName}"\n\n`;
+    content += `Object Properties: ${data.ObjectType} "${data.ObjectName}"\n\n`;
     
     if (data.Properties && data.Properties.length > 0) {
-      content += `🔧 Properties (${data.Properties.length}):\n`;
+      content += `Properties (${data.Properties.length}):\n`;
       for (const prop of data.Properties) {
-        content += `   📋 ${prop.Name} (${prop.Type})`;
+        content += `   ${prop.Name} (${prop.Type})`;
         if (prop.CurrentValue && prop.CurrentValue !== '<not available>') {
           content += ` = ${prop.CurrentValue}`;
         }
@@ -862,21 +862,21 @@ export class ToolHandlers {
         
         // Add description if available
         if (prop.Description && prop.Description !== "") {
-          content += `      💭 ${prop.Description}\n`;
+          content += `      ${prop.Description}\n`;
         }
         
         // Add possible values for enums if available
         if (prop.PossibleValues && prop.PossibleValues.length > 0) {
           if (prop.PossibleValues.length <= 5) {
-            content += `      🎯 Values: [${prop.PossibleValues.join(', ')}]\n`;
+            content += `      Values: [${prop.PossibleValues.join(', ')}]\n`;
           } else {
-            content += `      🎯 Values: [${prop.PossibleValues.slice(0, 5).join(', ')}, ... (${prop.PossibleValues.length - 5} more)]\n`;
+            content += `      Values: [${prop.PossibleValues.slice(0, 5).join(', ')}, ... (${prop.PossibleValues.length - 5} more)]\n`;
           }
         }
         
         // Add readonly indicator if applicable
         if (prop.IsReadOnly === true) {
-          content += `      🔒 Read-only\n`;
+          content += `      Read-only\n`;
         }
       }
     } else {
@@ -888,10 +888,10 @@ export class ToolHandlers {
 
   // Format collection mode result
   static formatCollectionResult(content: string, objectName: string, data: any, collectionName?: string): string {
-    content += `✅ Collection "${collectionName}": ${data.ObjectType} "${data.ObjectName}"\n\n`;
+    content += `Collection "${collectionName}": ${data.ObjectType} "${data.ObjectName}"\n\n`;
     
     if (data.Collection) {
-      content += `📋 ${data.CollectionName} Collection:\n`;
+      content += `${data.CollectionName} Collection:\n`;
       content += `   Item Type: ${data.Collection.ItemType}\n`;
       content += `   Count: ${data.Collection.FilteredCount || data.Collection.Count}\n`;
       
@@ -944,8 +944,8 @@ export class ToolHandlers {
       // Cache object types in SQLite for fast retrieval
       await ObjectIndexManager.cacheObjectTypes(availableTypes);
       
-      content += `✅ Cached ${availableTypes.length} object types from D365 reflection\n`;
-      content += `📊 Sample types: ${availableTypes.slice(0, 10).join(', ')}...\n`;
+      content += `Cached ${availableTypes.length} object types from D365 reflection\n`;
+      content += `Sample types: ${availableTypes.slice(0, 10).join(', ')}...\n`;
       
       // Show type distribution
       const typePatterns: Record<string, number> = {};
@@ -954,7 +954,7 @@ export class ToolHandlers {
         typePatterns[prefix] = (typePatterns[prefix] || 0) + 1;
       });
       
-      content += "\n🏷️ Type Distribution (top 10):\n";
+      content += "\nType Distribution (top 10):\n";
       Object.entries(typePatterns)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
@@ -963,7 +963,7 @@ export class ToolHandlers {
         });
         
     } catch (error) {
-      content += `⚠️ Failed to cache object types: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
+      content += `Failed to cache object types: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
     }
 
     return await createLoggedResponse(content, requestId, "build_object_index");
@@ -1055,7 +1055,7 @@ export class ToolHandlers {
             
             // Set up error handler for the client to prevent unhandled errors
             client.on('error', (error) => {
-              console.warn('D365 Service Client error (handled):', error.message);
+              console.warn('[ToolHandlers] D365 Service Client error (handled):', error.message);
             });
             
             await client.connect();
@@ -1086,7 +1086,7 @@ export class ToolHandlers {
           
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Service connection failed';
-          console.warn('D365 Service unavailable:', errorMessage);
+          console.warn('[ToolHandlers] D365 Service unavailable:', errorMessage);
           
           d365ServiceInfo = {
             status: 'unavailable',
@@ -1403,29 +1403,29 @@ export class ToolHandlers {
       // Generate context-aware header for text format
       let content: string;
       if (pattern === "*" && model) {
-        content = `📦 Model Browser: "${model}"`;
+        content = `Model Browser: "${model}"`;
         if (objectType) content += ` (${objectType} objects only)`;
       } else {
-        content = `🔍 Pattern Search: "${pattern}"`;
+        content = `Pattern Search: "${pattern}"`;
         if (objectType) content += ` (${objectType} only)`;
         if (model) content += ` in ${model}`;
       }
-      content += `\n⚡ Query time: ${duration}ms\n\n`;
+      content += `\nQuery time: ${duration}ms\n\n`;
 
       if (results.length === 0) {
         if (pattern === "*" && model) {
-          content += `❌ No objects found in model "${model}"`;
+          content += `No objects found in model "${model}"`;
           if (objectType) content += ` of type "${objectType}"`;
-          content += `\n\n💡 Suggestions:\n`;
+          content += `\n\nSuggestions:\n`;
           content += `   • Check model name spelling\n`;
           content += `   • Try without object type filter\n`;
           content += `   • Search pattern: search_objects_pattern("*", "", "${model}")\n`;
         } else {
-          content += `❌ No objects found matching pattern "${pattern}"`;
+          content += `No objects found matching pattern "${pattern}"`;
           if (objectType || model) {
             content += ` with the specified filters`;
           }
-          content += `\n\n💡 Pattern Examples:\n`;
+          content += `\n\nPattern Examples:\n`;
           content += `   • "Cust*" - objects starting with "Cust"\n`;
           content += `   • "*Table" - objects ending with "Table"\n`;
           content += `   • "*Invoice*" - objects containing "Invoice"\n`;
@@ -1433,7 +1433,7 @@ export class ToolHandlers {
           content += `   • "*" + model filter - browse entire model\n`;
         }
       } else {
-        content += `✅ Found ${results.length} matches`;
+        content += `Found ${results.length} matches`;
         if (limitedResults.length < results.length) {
           content += ` (showing first ${limitedResults.length})`;
         }
@@ -1450,7 +1450,7 @@ export class ToolHandlers {
           });
 
           for (const [type, objects] of Object.entries(grouped)) {
-            content += `🏷️  ${type} (${objects.length}):\n`;
+            content += ` ${type} (${objects.length}):\n`;
             objects.forEach((obj: ObjectLocation) => {
               content += `   • ${obj.name}\n`;
             });
@@ -1460,20 +1460,20 @@ export class ToolHandlers {
           // For pattern searches, show individual results
           limitedResults.forEach((obj, i) => {
             content += `${i + 1}. ${obj.name}\n`;
-            content += `   📦 ${obj.model} → ${obj.type}\n`;
-            content += `   📁 ${obj.path}\n`;
+            content += `   ${obj.model} → ${obj.type}\n`;
+            content += `   ${obj.path}\n`;
             content += `\n`;
           });
         }
 
         if (limitedResults.length < results.length) {
           content += `... and ${results.length - limitedResults.length} more matches\n\n`;
-          content += `💡 Use higher limit to see more: search_objects_pattern("${pattern}", "${objectType || ''}", "${model || ''}", ${results.length})\n`;
+          content += `Use higher limit to see more: search_objects_pattern("${pattern}", "${objectType || ''}", "${model || ''}", ${results.length})\n`;
         }
         
         // Provide usage examples for complex scenarios
         if (pattern === "*" && model && results.length > 100) {
-          content += `\n📝 Usage Examples:\n`;
+          content += `\nUsage Examples:\n`;
           content += `   • Filter by type: search_objects_pattern("*", "AxClass", "${model}")\n`;
           content += `   • Search within model: search_objects_pattern("Cust*", "", "${model}")\n`;
         }
@@ -1496,7 +1496,7 @@ export class ToolHandlers {
   }
 
   static async discoverModificationCapabilities(args: any, requestId: string): Promise<any> {
-    console.log('🔍 Starting discoverModificationCapabilities with args:', JSON.stringify(args, null, 2));
+    console.log('[ToolHandlers] Starting discoverModificationCapabilities with args:', JSON.stringify(args, null, 2));
     
     const actualArgs = args?.arguments || args;
     
@@ -1514,32 +1514,32 @@ export class ToolHandlers {
     const { objectType } = validationResult.data;
 
     try {
-      console.log(`🔍 Discovering modification capabilities for object type: ${objectType}`);
+      console.log(`[ToolHandlers] Discovering modification capabilities for object type: ${objectType}`);
 
       // Import D365ServiceClient dynamically to avoid circular dependencies
       const { D365ServiceClient } = await import('./d365-service-client.js');
       const client = new D365ServiceClient('mcp-xpp-d365-service', 10000, 30000);
       
       // Connect to the service
-      console.log('🔗 Connecting to D365 service...');
+      console.log('[ToolHandlers] Connecting to D365 service...');
       await client.connect();
-      console.log('✅ Connected to D365 service');
+      console.log('[ToolHandlers] Connected to D365 service');
 
       // Discover modification capabilities
-      console.log(`🚀 Requesting modification capabilities for ${objectType}...`);
+      console.log(`[ToolHandlers] Requesting modification capabilities for ${objectType}...`);
       const response = await client.discoverModificationCapabilities(objectType);
-      console.log('📦 Raw service response:', JSON.stringify(response, null, 2));
+      console.log('[ToolHandlers] Raw service response:', JSON.stringify(response, null, 2));
 
       // Ensure we disconnect
       await client.disconnect();
-      console.log('🔌 Disconnected from D365 service');
+      console.log('[ToolHandlers] Disconnected from D365 service');
 
       // Extract the capabilities data
       const capabilities = response.Data || response.data || response;
       
       if (!capabilities) {
         return await createLoggedResponse(
-          `❌ No modification capabilities found for object type: ${objectType}`,
+          `No modification capabilities found for object type: ${objectType}`,
           requestId,
           "discover_modification_capabilities"
         );
@@ -1568,7 +1568,7 @@ export class ToolHandlers {
       const inheritanceHierarchy = capabilities.InheritanceHierarchy || {};
       const reflectionInfo = capabilities.ReflectionInfo || {};
       
-      console.log('🔍 DEBUG: InheritanceHierarchy from C# service:', JSON.stringify(inheritanceHierarchy, null, 2));
+      console.log('[ToolHandlers] DEBUG: InheritanceHierarchy from C# service:', JSON.stringify(inheritanceHierarchy, null, 2));
       
       // Build type groups using the explicit inheritance mapping from C# service
       const typeGroups: { [key: string]: any[] } = {};
@@ -1595,9 +1595,9 @@ export class ToolHandlers {
 
       // Create enhanced method documentation with explicit concrete type guidance
       const methodsDocumentation = formattedResponse.availableMethods && formattedResponse.availableMethods.length > 0 ?
-        `🔧 **MODIFICATION METHODS WITH CONCRETE TYPE REQUIREMENTS:**\n` +
+        `**MODIFICATION METHODS WITH CONCRETE TYPE REQUIREMENTS:**\n` +
         formattedResponse.availableMethods.map((method: any) => {
-          let methodDoc = `\n   📝 **${method.Name}**\n`;
+          let methodDoc = `\n   **${method.Name}**\n`;
           methodDoc += `      • Description: ${method.Description || 'Modifies the object'}\n`;
           
           // Find the corresponding method in ModificationMethods to get parameter requirements
@@ -1609,8 +1609,8 @@ export class ToolHandlers {
             if (availableConcreteTypes.length > 1) {
               // Multiple concrete types available - this is an abstract type
               methodDoc += `      • Parameters: ${parameterType} (abstract - must use concrete type)\n`;
-              methodDoc += `      • 🎯 **Concrete types for ${parameterType}:** ${availableConcreteTypes.map(t => t.Name).join(', ')}\n`;
-              methodDoc += `      • ⚠️  **Usage**: "concreteType": "${availableConcreteTypes[0].Name}" (choose from above list)\n`;
+              methodDoc += `      • **Concrete types for ${parameterType}:** ${availableConcreteTypes.map(t => t.Name).join(', ')}\n`;
+              methodDoc += `      •  **Usage**: "concreteType": "${availableConcreteTypes[0].Name}" (choose from above list)\n`;
             } else if (availableConcreteTypes.length === 1) {
               // Only one concrete type - already concrete
               methodDoc += `      • Parameters: ${parameterType} (concrete type)\n`;
@@ -1635,10 +1635,10 @@ export class ToolHandlers {
 
       // Create concrete types section with inheritance explanation
       const concreteTypeInfo = concreteTypes.length > 0 ? 
-        `�️ **D365 METADATA TYPE SYSTEM:**\n\n` +
+        `**D365 METADATA TYPE SYSTEM:**\n\n` +
         `   The D365 metadata API uses inheritance hierarchies. Methods expecting abstract base types\n` +
         `   (like AxTableField) must be called with concrete implementations.\n\n` +
-        `🎯 **AVAILABLE CONCRETE TYPES:**\n` +
+        `**AVAILABLE CONCRETE TYPES:**\n` +
         concreteTypes.map((type: any) => {
           return `   • ${type.Name}: Use as 'concreteType' parameter\n` +
                  `     Full Name: ${type.FullName}\n` +
@@ -1664,10 +1664,10 @@ export class ToolHandlers {
                                    objectType === 'AxClass' ? 'AxMethod' :
                                    'ConcreteType');
 
-      const usageExamples = `💡 **USAGE EXAMPLES:**\n\n` +
-        `   📋 **Step 1: Discover capabilities**\n` +
+      const usageExamples = `**USAGE EXAMPLES:**\n\n` +
+        `   **Step 1: Discover capabilities**\n` +
         `   discover_modification_capabilities({ objectType: "${objectType}" })\n\n` +
-        `   🔧 **Step 2: Execute modification**\n` +
+        `   **Step 2: Execute modification**\n` +
         `   execute_object_modification({\n` +
         `     objectType: "${objectType}",\n` +
         `     objectName: "${exampleObjectName}",\n` +
@@ -1680,13 +1680,13 @@ export class ToolHandlers {
         `   })\n\n`;
 
       // Debug logging
-      console.log('🔍 DEBUG methodsDocumentation length:', methodsDocumentation.length);
-      console.log('🔍 DEBUG methodsDocumentation preview:', methodsDocumentation.substring(0, 200));
-      console.log('🔍 DEBUG concreteTypeInfo length:', concreteTypeInfo.length);
-      console.log('🔍 DEBUG usageExamples length:', usageExamples.length);
+      console.log('[ToolHandlers] DEBUG methodsDocumentation length:', methodsDocumentation.length);
+      console.log('[ToolHandlers] DEBUG methodsDocumentation preview:', methodsDocumentation.substring(0, 200));
+      console.log('[ToolHandlers] DEBUG concreteTypeInfo length:', concreteTypeInfo.length);
+      console.log('[ToolHandlers] DEBUG usageExamples length:', usageExamples.length);
 
-      const summary = `🎯 **MODIFICATION CAPABILITIES FOR ${objectType.toUpperCase()}**\n\n` +
-        `📋 **Object Information:**\n` +
+      const summary = `**MODIFICATION CAPABILITIES FOR ${objectType.toUpperCase()}**\n\n` +
+        `**Object Information:**\n` +
         `   • Type: ${formattedResponse.objectType}\n` +
         `   • Full Name: ${formattedResponse.fullTypeName}\n` +
         `   • Namespace: ${reflectionInfo.Namespace || 'Unknown'}\n` +
@@ -1702,13 +1702,13 @@ export class ToolHandlers {
       );
 
     } catch (error: any) {
-      console.error('❌ Error discovering modification capabilities:', error);
+      console.error('[ToolHandlers] Error discovering modification capabilities:', error);
       
       const errorMessage = error.message || 'An unexpected error occurred';
       
       if (errorMessage.includes('timeout') || errorMessage.includes('ENOENT')) {
         return await createLoggedResponse(
-          `⚠️ **Connection Error**: Could not connect to D365 metadata service.\n\n` +
+          `**Connection Error**: Could not connect to D365 metadata service.\n\n` +
           `**Possible Solutions:**\n` +
           `1. Ensure the C# service is running (Build and Run C# Service task)\n` +
           `2. Check if Visual Studio 2022 with D365 tools is installed\n` +
@@ -1720,7 +1720,7 @@ export class ToolHandlers {
       }
 
       return await createLoggedResponse(
-        `❌ **Error discovering modification capabilities for ${objectType}:**\n${errorMessage}`,
+        `**Error discovering modification capabilities for ${objectType}:**\n${errorMessage}`,
         requestId,
         "discover_modification_capabilities"
       );
@@ -1728,7 +1728,7 @@ export class ToolHandlers {
   }
 
   static async executeObjectModification(args: any, requestId: string): Promise<any> {
-    console.log('🔧 Starting executeObjectModification with args:', JSON.stringify(args, null, 2));
+    console.log('[ToolHandlers] Starting executeObjectModification with args:', JSON.stringify(args, null, 2));
     
     const actualArgs = args?.arguments || args;
     
@@ -1763,7 +1763,7 @@ export class ToolHandlers {
     // Resolve model: use provided model, or fall back to configured default
     const model = arrayValidation.data.model || AppConfig.getDefaultModel();
     
-    console.log(`Processing ${modifications.length} modifications for ${objectType}:${objectName} in model: ${model || '(auto-detect)'}`);
+    console.log(`[ToolHandlers] Processing ${modifications.length} modifications for ${objectType}:${objectName} in model: ${model || '(auto-detect)'}`);
 
     try {
       // Import D365ServiceClient dynamically to avoid circular dependencies
@@ -1771,9 +1771,9 @@ export class ToolHandlers {
       const client = new D365ServiceClient('mcp-xpp-d365-service', 10000, 60000); // Longer timeout for modifications
       
       // Connect to the service
-      console.log('🔗 Connecting to D365 service...');
+      console.log('[ToolHandlers] Connecting to D365 service...');
       await client.connect();
-      console.log('✅ Connected to D365 service');
+      console.log('[ToolHandlers] Connected to D365 service');
 
       // Process each modification and collect results
       const operationResults: Array<{
@@ -1788,11 +1788,11 @@ export class ToolHandlers {
       let successCount = 0;
       let failureCount = 0;
 
-      console.log(`🚀 Starting execution of ${modifications.length} modification(s)...`);
+      console.log(`[ToolHandlers] Starting execution of ${modifications.length} modification(s)...`);
       
       for (let i = 0; i < modifications.length; i++) {
         const modification = modifications[i];
-        console.log(`📝 [${i + 1}/${modifications.length}] Executing ${modification.methodName}...`);
+        console.log(`[${i + 1}/${modifications.length}] Executing ${modification.methodName}...`);
         
         try {
           const startTime = Date.now();
@@ -1805,7 +1805,7 @@ export class ToolHandlers {
           );
           const processingTime = Date.now() - startTime;
           
-          console.log(`📦 [${i + 1}/${modifications.length}] Response:`, JSON.stringify(response, null, 2));
+          console.log(`[${i + 1}/${modifications.length}] Response:`, JSON.stringify(response, null, 2));
           
           // Extract the result data
           const result = response.Data || response.data || response;
@@ -1845,7 +1845,7 @@ export class ToolHandlers {
           }
           
         } catch (operationError: any) {
-          console.error(`❌ [${i + 1}/${modifications.length}] Error in ${modification.methodName}:`, operationError);
+          console.error(`[${i + 1}/${modifications.length}] Error in ${modification.methodName}:`, operationError);
           operationResults.push({
             methodName: modification.methodName,
             parameters: modification.parameters,
@@ -1859,22 +1859,24 @@ export class ToolHandlers {
 
       // Ensure we disconnect
       await client.disconnect();
-      console.log('🔌 Disconnected from D365 service');
+      console.log('[ToolHandlers] Disconnected from D365 service');
 
       // Format the response based on whether it was single or array modification
       const isArrayResponse = modifications.length > 1;
       
       if (isArrayResponse) {
         // Array modification response
-        const summary = `${successCount > 0 ? '✅' : '❌'} **BATCH MODIFICATION RESULTS**\n\n` +
-          `🎯 **Target Object:** ${objectType}:${objectName}\n` +
-          `� **Summary:** ${successCount} succeeded, ${failureCount} failed (${modifications.length} total)\n\n` +
-          `� **Operation Results:**\n` +
+        const summary = `${successCount > 0 ? '' : ''} **BATCH MODIFICATION RESULTS**\n\n` +
+          `**Target Object:** ${objectType}:${objectName}\n` +
+          ` **Summary:** ${successCount} succeeded, ${failureCount} failed (${modifications.length} total)\n\n` +
+          ` **Operation Results:**\n` +
           operationResults.map((op, index) => 
-            `   ${index + 1}. ${op.success ? '✅' : '❌'} **${op.methodName}** ` +
-            `(${op.processingTimeMs}ms)${op.success ? '' : `\n      💥 Error: ${op.error}`}`
+            `   ${index + 1}. ${op.success ? '' : ''} **${op.methodName}** ` +
+            `(${op.processingTimeMs}ms)${op.success ? '' : `\n      Error: ${op.error}`}` +
+            `${!op.success && (op.error?.includes('DuplicateNamedObject') || op.error?.includes('already exists')) ? 
+              `\n      Fix: Use RemoveMethod first, then AddMethod to update existing items` : ''}`
           ).join('\n') +
-          `\n\n💾 **Next Steps:**\n` +
+          `\n\n**Next Steps:**\n` +
           `   • Save the modified object to persist changes\n` +
           `   • Build/compile the project to apply modifications\n` +
           `   • ${failureCount > 0 ? 'Retry failed operations if needed\n   • ' : ''}Test the modified object functionality`;
@@ -1888,16 +1890,16 @@ export class ToolHandlers {
         // Single modification response (backwards compatibility)
         const operation = operationResults[0];
         if (operation.success) {
-          const summary = `✅ **MODIFICATION EXECUTED SUCCESSFULLY**\n\n` +
-            `🎯 **Operation Details:**\n` +
+          const summary = `**MODIFICATION EXECUTED SUCCESSFULLY**\n\n` +
+            `**Operation Details:**\n` +
             `   • Method: ${operation.methodName}\n` +
             `   • Target: ${objectType}:${objectName}\n` +
             `   • Parameters: ${Object.keys(operation.parameters).length} provided\n\n` +
-            `📊 **Execution Results:**\n` +
+            `**Execution Results:**\n` +
             `   • Status: Success\n` +
             `   • Processing Time: ${operation.processingTimeMs}ms\n` +
             `   • Timestamp: ${new Date().toLocaleString()}\n\n` +
-            `💾 **Next Steps:**\n` +
+            `**Next Steps:**\n` +
             `   • Save the modified object to persist changes\n` +
             `   • Build/compile the project to apply modifications\n` +
             `   • Test the modified object functionality`;
@@ -1909,13 +1911,21 @@ export class ToolHandlers {
           );
         } else {
           return await createLoggedResponse(
-            `❌ **Modification Failed:**\n\n` +
-            `🎯 **Operation:** ${operation.methodName} on ${objectType}:${objectName}\n` +
-            `💥 **Error:** ${operation.error}\n\n` +
-            `💡 **Suggestions:**\n` +
-            `   • Verify the object exists in the metadata\n` +
-            `   • Check parameter format using discover_modification_capabilities\n` +
-            `   • Ensure required parameters are provided`,
+            `**Modification Failed:**\n\n` +
+            `**Operation:** ${operation.methodName} on ${objectType}:${objectName}\n` +
+            `**Error:** ${operation.error}\n\n` +
+            (operation.error?.includes('DuplicateNamedObject') || operation.error?.includes('already exists') ?
+              `**Root Cause:** The ${operation.methodName} method only creates NEW items. The item already exists on this object.\n\n` +
+              `**Solution:** To UPDATE an existing method/field, use a two-step approach in one call:\n` +
+              `   1. First remove the existing item: { methodName: "RemoveMethod", parameters: { Name: "<methodName>" } }\n` +
+              `   2. Then re-add with new content: { methodName: "AddMethod", parameters: { Name: "<methodName>", Source: "<newCode>" } }\n` +
+              `   Both steps should be in the same 'modifications' array for atomicity.\n` +
+              `   Use discover_modification_capabilities to verify available Remove* methods.` :
+              `**Suggestions:**\n` +
+              `   • Verify the object exists in the metadata\n` +
+              `   • Check parameter format using discover_modification_capabilities\n` +
+              `   • Ensure required parameters are provided\n` +
+              `   • If adding items that may already exist, use Remove* first then Add* in one batch`),
             requestId,
             "execute_object_modification"
           );
@@ -1923,13 +1933,13 @@ export class ToolHandlers {
       }
 
     } catch (error: any) {
-      console.error('❌ Error executing object modification:', error);
+      console.error('[ToolHandlers] Error executing object modification:', error);
       
       const errorMessage = error.message || 'An unexpected error occurred';
       
       if (errorMessage.includes('timeout') || errorMessage.includes('ENOENT')) {
         return await createLoggedResponse(
-          `⚠️ **Connection Error**: Could not connect to D365 metadata service.\n\n` +
+          `**Connection Error**: Could not connect to D365 metadata service.\n\n` +
           `**Possible Solutions:**\n` +
           `1. Ensure the C# service is running (Build and Run C# Service task)\n` +
           `2. Check if Visual Studio 2022 with D365 tools is installed\n` +
@@ -1942,7 +1952,7 @@ export class ToolHandlers {
 
       if (errorMessage.includes('not found') || errorMessage.includes('does not exist')) {
         return await createLoggedResponse(
-          `🔍 **Object Not Found**: The specified object could not be located.\n\n` +
+          `**Object Not Found**: The specified object could not be located.\n\n` +
           `**Target:** ${objectType}:${objectName}\n\n` +
           `**Suggestions:**\n` +
           `• Verify object name spelling and case\n` +
@@ -1955,7 +1965,7 @@ export class ToolHandlers {
       }
 
       return await createLoggedResponse(
-        `❌ **Error executing modifications on ${objectType}:${objectName}:**\n${errorMessage}`,
+        `**Error executing modifications on ${objectType}:${objectName}:**\n${errorMessage}`,
         requestId,
         "execute_object_modification"
       );
@@ -1965,23 +1975,23 @@ export class ToolHandlers {
   // Format code inspection result
   static formatCodeResult(content: string, objectName: string, data: any): string {
     if (!data.CodeContent) {
-      content += `❌ No code content available\n`;
+      content += `No code content available\n`;
       return content;
     }
 
     const codeData = data.CodeContent;
     
     // Add header with extraction info
-    content += `📄 Object Type: ${data.ObjectType}\n`;
-    content += `🔧 Code Target: ${data.CodeTarget}\n`;
-    content += `📅 Extracted: ${data.ExtractedAt}\n`;
+    content += `Object Type: ${data.ObjectType}\n`;
+    content += `Code Target: ${data.CodeTarget}\n`;
+    content += `Extracted: ${data.ExtractedAt}\n`;
     if (data.MethodName) {
-      content += `🎯 Method: ${data.MethodName}\n`;
+      content += `Method: ${data.MethodName}\n`;
     }
     content += `\n`;
 
     if (codeData.Error) {
-      content += `❌ Error: ${codeData.Error}\n`;
+      content += `Error: ${codeData.Error}\n`;
       return content;
     }
 
@@ -1991,12 +2001,12 @@ export class ToolHandlers {
       content += this.formatSingleMethod(codeData.Method);
     } else if (codeData.Methods && Array.isArray(codeData.Methods)) {
       // Multiple methods result
-      content += `📊 **Summary:**\n`;
+      content += `**Summary:**\n`;
       content += `   • Total Methods: ${codeData.TotalMethods || codeData.Methods.length}\n`;
       content += `   • Total Lines: ${codeData.TotalLinesOfCode || 'Unknown'}\n`;
       content += `   • Language: ${codeData.Language || 'X++'}\n\n`;
       
-      content += `💻 **Method Source Code:**\n\n`;
+      content += `**Method Source Code:**\n\n`;
       
       codeData.Methods.forEach((method: any, index: number) => {
         content += `--- Method ${index + 1}: ${method.Name || 'Unknown'} ---\n`;
@@ -2004,7 +2014,7 @@ export class ToolHandlers {
         content += `\n`;
       });
     } else {
-      content += `⚠️ Unexpected code result format\n`;
+      content += `Unexpected code result format\n`;
     }
 
     return content;
@@ -2015,14 +2025,14 @@ export class ToolHandlers {
     let content = '';
     
     if (method.Error) {
-      content += `❌ Error: ${method.Error}\n`;
+      content += `Error: ${method.Error}\n`;
       return content;
     }
 
     // Method signature and metadata
-    content += `🏷️  **Method:** ${method.Name || 'Unknown'}\n`;
+    content += ` **Method:** ${method.Name || 'Unknown'}\n`;
     if (method.Signature) {
-      content += `📝 **Signature:** \`${method.Signature}\`\n`;
+      content += `**Signature:** \`${method.Signature}\`\n`;
     }
     
     // Method characteristics
@@ -2034,7 +2044,7 @@ export class ToolHandlers {
     if (method.IsOverride) characteristics.push('override');
     
     if (characteristics.length > 0) {
-      content += `🔧 **Type:** ${characteristics.join(', ')}\n`;
+      content += `**Type:** ${characteristics.join(', ')}\n`;
     }
     
     // Code metrics
@@ -2046,12 +2056,12 @@ export class ToolHandlers {
     }
     
     if (metrics.length > 0) {
-      content += `📊 **Metrics:** ${metrics.join(', ')}\n`;
+      content += `**Metrics:** ${metrics.join(', ')}\n`;
     }
 
     // Parameters
     if (method.Parameters && method.Parameters.length > 0) {
-      content += `📋 **Parameters:**\n`;
+      content += `**Parameters:**\n`;
       method.Parameters.forEach((param: any) => {
         content += `   • ${param.Name}: ${param.Type || 'unknown'}`;
         if (param.DefaultValue) content += ` = ${param.DefaultValue}`;
@@ -2066,14 +2076,14 @@ export class ToolHandlers {
     if (method.HasTryCatch) flags.push('has try/catch');
     
     if (flags.length > 0) {
-      content += `🏷️  **Features:** ${flags.join(', ')}\n`;
+      content += ` **Features:** ${flags.join(', ')}\n`;
     }
 
     // Source code
     if (method.HasSourceCode && method.SourceCode) {
-      content += `\n💻 **Source Code:**\n\`\`\`xpp\n${method.SourceCode}\n\`\`\`\n`;
+      content += `\n**Source Code:**\n\`\`\`xpp\n${method.SourceCode}\n\`\`\`\n`;
     } else {
-      content += `\n❌ **No source code available**\n`;
+      content += `\n**No source code available**\n`;
     }
 
     return content;

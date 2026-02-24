@@ -78,7 +78,7 @@ async function runServer() {
     const transportConfig = parseTransportConfig();
     
     console.error(`Starting MCP X++ Server...`);
-    console.error(`📡 Transport Configuration:`);
+    console.error(` Transport Configuration:`);
     console.error(`   STDIO: ${transportConfig.stdio ? 'enabled' : 'disabled'}`);
     if (transportConfig.http?.enabled) {
       console.error(`   HTTP: enabled on ${transportConfig.http.host}:${transportConfig.http.port}`);
@@ -120,7 +120,7 @@ async function runServer() {
     
     // Perform automatic full index build on first startup
     if (xppPath) {
-      console.error('🔄 Performing automatic full index build on startup...');
+      console.error(' Performing automatic full index build on startup...');
       try {
         // Import ObjectIndexManager dynamically to avoid circular dependencies
         const { ObjectIndexManager } = await import('./modules/object-index.js');
@@ -130,14 +130,14 @@ async function runServer() {
         const existingObjectCount = SQLiteObjectLookup.safeGetTotalCount();
         
         if (existingObjectCount === 0) {
-          console.error('📊 No existing index found, building full object index...');
+          console.error(' No existing index found, building full object index...');
           await ObjectIndexManager.buildFullIndex(false); // Use non-force build for efficiency
-          console.error('✅ Automatic full index build completed successfully');
+          console.error(' Automatic full index build completed successfully');
         } else {
-          console.error(`📋 Existing index found with ${existingObjectCount} objects, skipping rebuild`);
+          console.error(` Existing index found with ${existingObjectCount} objects, skipping rebuild`);
         }
       } catch (error) {
-        console.error('⚠️  Automatic index build failed (server will continue):', (error as Error).message);
+        console.error('  Automatic index build failed (server will continue):', (error as Error).message);
         await DiskLogger.logError(error, "startup-index-build");
       }
     }

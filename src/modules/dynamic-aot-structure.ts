@@ -1,4 +1,4 @@
-import { AOTStructureCacheManager } from "./aot-structure-cache.js";
+﻿import { AOTStructureCacheManager } from "./aot-structure-cache.js";
 import { AOTStructure, DiscoveredTypeInfo } from "./types.js";
 
 /**
@@ -38,10 +38,10 @@ export class DynamicAOTStructureManager {
         });
       });
 
-      console.log(`Dynamic AOT structure loaded: ${this.discoveredObjectTypes.size} types from ${Object.keys(reflectionCache.categories).length} categories`);
+      console.log(`[DynamicAot] Dynamic AOT structure loaded: ${this.discoveredObjectTypes.size} types from ${Object.keys(reflectionCache.categories).length} categories`);
       
     } catch (error) {
-      console.error('ERROR: Failed to load dynamic AOT structure:', error);
+      console.error('[DynamicAot] ERROR: Failed to load dynamic AOT structure:', error);
       throw new Error(`Dynamic AOT structure loading failed: ${error}`);
     }
   }
@@ -192,7 +192,7 @@ export class DynamicAOTStructureManager {
   static async discoverAvailableObjectTypes(basePath: string): Promise<void> {
     // For dynamic structure, we already have this from reflection
     // This method is kept for compatibility with existing code
-    console.log(`📍 Using dynamic reflection data instead of filesystem discovery`);
+    console.log(`[DynamicAot] Using dynamic reflection data instead of filesystem discovery`);
   }
 
   /**
@@ -211,7 +211,7 @@ export class DynamicAOTStructureManager {
       const categoryTypes = Array.from(this.discoveredObjectTypes.values())
         .filter(type => type.category === categoryName);
       
-      output += `📂 ${categoryName} (${categoryTypes.length} types)\n`;
+      output += `${categoryName} (${categoryTypes.length} types)\n`;
       output += `   ${categoryConfig.description || ''}\n`;
       
       if (categoryConfig.children && Object.keys(categoryConfig.children).length > 0) {
@@ -254,7 +254,7 @@ export class DynamicAOTStructureManager {
     const isStale = await cacheManager.isCacheStale();
     
     if (isStale) {
-      console.log('🔄 AOT structure cache is stale, regenerating...');
+      console.log('[DynamicAot] AOT structure cache is stale, regenerating...');
       await cacheManager.generateAOTStructureCache();
     }
   }

@@ -1,4 +1,4 @@
-import { promises as fs } from "fs";
+﻿import { promises as fs } from "fs";
 import { existsSync } from "fs";
 import { basename, extname, join } from "path";
 import { xppObjectCache } from "./cache.js";
@@ -304,13 +304,13 @@ export async function findXppObject(objectName: string, objectType?: string, mod
         return results;
       }
     } catch (error) {
-      console.error('SQLite lookup failed, falling back to filesystem search:', error);
+      console.error('[Parsers] SQLite lookup failed, falling back to filesystem search:', error);
       lookup.close();
     }
   }
   
   // Fallback to filesystem search if SQLite lookup fails
-  console.log('Falling back to filesystem search...');
+  console.log('[Parsers] Falling back to filesystem search...');
   
   async function searchInDirectory(dirPath: string, currentModel?: string) {
     try {
