@@ -53,6 +53,14 @@
       <HintPath>{{VS_EXTENSION_PATH}}\\Microsoft.Dynamics.Framework.Tools.MetaModel.Core.17.0.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="Microsoft.Dynamics.AX.Framework.Xlnt.XReference.XReferenceProviders">
+      <HintPath>{{VS_EXTENSION_PATH}}\\Microsoft.Dynamics.AX.Framework.Xlnt.XReference.XReferenceProviders.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.Dynamics.Framework.Tools.Configuration.17.0">
+      <HintPath>{{VS_EXTENSION_PATH}}\\Microsoft.Dynamics.Framework.Tools.Configuration.17.0.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>

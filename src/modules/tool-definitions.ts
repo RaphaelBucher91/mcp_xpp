@@ -830,7 +830,7 @@ export class ToolDefinitions {
               },
               objectType: {
                 type: "string",
-                description: "D365 object type. Common values: 'AxClass', 'AxTable', 'AxForm', 'AxView', 'AxQuery', 'AxEnum', 'AxEdt', 'AxMap', 'AxDataEntityView', 'AxMenuItemDisplay', 'label'. For labels, set objectType to 'label' and objectName to the label reference (e.g., '@SYS:Yes', '@BEC:L000867482634'). Defaults to 'AxClass' if not specified.",
+                description: "D365 object type. Common values: 'AxClass', 'AxTable', 'AxForm', 'AxView', 'AxQuery', 'AxEnum', 'AxEdt', 'AxMap', 'AxDataEntityView', 'AxMenuItemDisplay', 'label'. When omitted, the server auto-detects which types the object exists as in the XRef database and returns results for all matches. For labels, set objectType to 'label' and objectName to the label reference.",
               },
               memberName: {
                 type: "string",
@@ -853,6 +853,14 @@ export class ToolDefinitions {
               maxResults: {
                 type: "number",
                 description: "Maximum number of references to return. Default: 50. Use higher values for comprehensive analysis.",
+              },
+              includeMembers: {
+                type: "boolean",
+                description: "When true, automatically discovers all actual methods and fields on the object from the XRef database and returns cross-references for each member in a single call. This eliminates the need to guess member names or make multiple round-trip calls. Recommended for tables, classes, and forms. Default: false.",
+              },
+              maxMemberResults: {
+                type: "number",
+                description: "Maximum number of references to return per member when includeMembers=true. Default: 20.",
               },
             },
             required: ["objectName"],

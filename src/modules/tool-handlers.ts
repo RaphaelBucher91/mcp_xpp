@@ -2099,9 +2099,11 @@ export class ToolHandlers {
       direction: z.enum(["usedBy", "uses"]).optional().default("usedBy"),
       referenceKind: z.string().optional(),
       maxResults: z.number().optional().default(50),
+      includeMembers: z.boolean().optional().default(false),
+      maxMemberResults: z.number().optional().default(20),
     });
 
-    const { objectName, objectType, memberName, objectPath, direction, referenceKind, maxResults } = schema.parse(args);
+    const { objectName, objectType, memberName, objectPath, direction, referenceKind, maxResults, includeMembers, maxMemberResults } = schema.parse(args);
 
     try {
       const client = ObjectCreators['getServiceClient'](15000);
@@ -2111,12 +2113,14 @@ export class ToolHandlers {
         action: "crossreference",
         parameters: {
           objectName,
-          objectType: objectType || "AxClass",
+          objectType: objectType || "",
           memberName,
           objectPath,
           direction,
           referenceKind: referenceKind || "any",
           maxResults,
+          includeMembers,
+          maxMemberResults,
         }
       });
 
@@ -2139,39 +2143,140 @@ export class ToolHandlers {
         : objectName;
       const dirLabel = direction === "uses" ? "uses/calls" : "is used by";
       content += `Cross-References: "${targetDesc}" ${dirLabel}\n`;
-      content += `Path: ${data.TargetPath}\n`;
-      content += `Direction: ${data.Direction} | Kind filter: ${data.KindFilter}\n`;
-      content += `Found: ${data.TotalFound}`;
-      if (data.TotalAvailable > data.TotalFound) {
-        content += ` (${data.TotalAvailable} total available, showing first ${data.TotalFound})`;
-      }
-      content += "\n\n";
 
-      // Summary by kind
-      if (data.SummaryByKind && Object.keys(data.SummaryByKind).length > 0) {
-        content += "Summary by kind:\n";
-        for (const [kind, count] of Object.entries(data.SummaryByKind)) {
-          content += `  ${kind}: ${count}\n`;
+      // Auto-detect mode: show detected types and per-type results
+      if (data.DetectedTypes && data.DetectedTypes.length > 0) {
+        content += `Auto-detected types: ${data.DetectedTypes.join(", ")}\n`;
+        content += `Direction: ${data.Direction} | Kind filter: ${data.KindFilter}\n`;
+        content += `Total across all types: ${data.TotalFound}`;
+        if (data.TotalAvailable > data.TotalFound) {
+          content += ` (${data.TotalAvailable} total available)`;
         }
-        content += "\n";
-      }
+        content += "\n\n";
 
-      // References list
-      if (data.References && data.References.length > 0) {
-        content += "References:\n";
-        for (const ref of data.References) {
-          const displayPath = direction === "uses" ? ref.TargetPath : ref.SourcePath;
-          content += `  [${ref.Kind}] ${displayPath}`;
-          if (ref.Line > 0) {
-            content += ` (line ${ref.Line}`;
-            if (ref.Column > 0) content += `:${ref.Column}`;
-            content += `)`;
+        if (data.TypeResults && data.TypeResults.length > 0) {
+          for (const typeResult of data.TypeResults) {
+            content += `--- ${typeResult.DetectedType} (${typeResult.TypePath}) ---\n`;
+            content += `References: ${typeResult.TotalFound}`;
+            if (typeResult.TotalAvailable > typeResult.TotalFound) {
+              content += ` (${typeResult.TotalAvailable} total available)`;
+            }
+            content += "\n";
+
+            if (typeResult.SummaryByKind && Object.keys(typeResult.SummaryByKind).length > 0) {
+              for (const [kind, count] of Object.entries(typeResult.SummaryByKind)) {
+                content += `  ${kind}: ${count}\n`;
+              }
+            }
+
+            if (typeResult.References && typeResult.References.length > 0) {
+              for (const ref of typeResult.References) {
+                const displayPath = direction === "uses" ? ref.TargetPath : ref.SourcePath;
+                content += `  [${ref.Kind}] ${displayPath}`;
+                if (ref.Line > 0) {
+                  content += ` (line ${ref.Line}`;
+                  if (ref.Column > 0) content += `:${ref.Column}`;
+                  content += `)`;
+                }
+                content += "\n";
+              }
+            }
+
+            // Member results for this type
+            if (typeResult.MemberResults && typeResult.MemberResults.length > 0) {
+              content += `\n  Members (${typeResult.MemberResults.length} discovered):\n`;
+              for (const member of typeResult.MemberResults) {
+                content += `    [${member.MemberName}] - ${member.TotalAvailable} references\n`;
+                if (member.References && member.References.length > 0) {
+                  for (const ref of member.References) {
+                    const displayPath = direction === "uses" ? ref.TargetPath : ref.SourcePath;
+                    content += `      [${ref.Kind}] ${displayPath}`;
+                    if (ref.Line > 0) {
+                      content += ` (line ${ref.Line}`;
+                      if (ref.Column > 0) content += `:${ref.Column}`;
+                      content += `)`;
+                    }
+                    content += "\n";
+                  }
+                }
+              }
+            }
+
+            content += "\n";
+          }
+        }
+      } else {
+        // Explicit type mode: original formatting
+        content += `Path: ${data.TargetPath}\n`;
+        content += `Direction: ${data.Direction} | Kind filter: ${data.KindFilter}\n`;
+        content += `Found: ${data.TotalFound}`;
+        if (data.TotalAvailable > data.TotalFound) {
+          content += ` (${data.TotalAvailable} total available, showing first ${data.TotalFound})`;
+        }
+        content += "\n\n";
+
+        // Summary by kind
+        if (data.SummaryByKind && Object.keys(data.SummaryByKind).length > 0) {
+          content += "Summary by kind:\n";
+          for (const [kind, count] of Object.entries(data.SummaryByKind)) {
+            content += `  ${kind}: ${count}\n`;
           }
           content += "\n";
         }
-      } else {
-        content += "No cross-references found for this object.\n";
-        content += "Tip: Ensure the XRef database has been built in Visual Studio (Build > Update Cross References).\n";
+
+        // References list
+        if (data.References && data.References.length > 0) {
+          content += "References:\n";
+          for (const ref of data.References) {
+            const displayPath = direction === "uses" ? ref.TargetPath : ref.SourcePath;
+            content += `  [${ref.Kind}] ${displayPath}`;
+            if (ref.Line > 0) {
+              content += ` (line ${ref.Line}`;
+              if (ref.Column > 0) content += `:${ref.Column}`;
+              content += `)`;
+            }
+            content += "\n";
+          }
+        } else {
+          content += "No cross-references found for this object.\n";
+          content += "Tip: Ensure the XRef database has been built in Visual Studio (Build > Update Cross References).\n";
+        }
+
+        // Member-level cross-references (when includeMembers=true)
+        if (data.MemberResults && data.MemberResults.length > 0) {
+          content += "\n--- Member Cross-References ---\n";
+          content += `Discovered ${data.MemberResults.length} members from XRef database:\n\n`;
+
+          for (const member of data.MemberResults) {
+            content += `[${member.MemberName}] - ${member.TotalAvailable} references`;
+            if (member.TotalAvailable > member.TotalFound) {
+              content += ` (showing ${member.TotalFound})`;
+            }
+            content += "\n";
+
+            if (member.SummaryByKind && Object.keys(member.SummaryByKind).length > 0) {
+              for (const [kind, count] of Object.entries(member.SummaryByKind)) {
+                content += `    ${kind}: ${count}\n`;
+              }
+            }
+
+            if (member.References && member.References.length > 0) {
+              for (const ref of member.References) {
+                const displayPath = direction === "uses" ? ref.TargetPath : ref.SourcePath;
+                content += `    [${ref.Kind}] ${displayPath}`;
+                if (ref.Line > 0) {
+                  content += ` (line ${ref.Line}`;
+                  if (ref.Column > 0) content += `:${ref.Column}`;
+                  content += `)`;
+                }
+                content += "\n";
+              }
+            }
+            content += "\n";
+          }
+        } else if (includeMembers) {
+          content += "\nNo member paths found in the XRef database for this object.\n";
+        }
       }
 
       return await createLoggedResponse(content, requestId, "find_xpp_references");

@@ -131,6 +131,18 @@
         <bindingRedirect oldVersion="0.0.0.0-99.0.0.0" newVersion="7.0.0.0" />
         <codeBase version="7.0.0.0" href="file:///C:/Program Files/Microsoft Visual Studio/2022/Professional/Common7/IDE/Extensions/avm13osb.viu/Microsoft.Dynamics.InstrumentationFramework.dll" />
       </dependentAssembly>
+      
+      <dependentAssembly>
+        <assemblyIdentity name="Microsoft.Dynamics.AX.Framework.Xlnt.XReference.XReferenceProviders" publicKeyToken="31bf3856ad364e35" />
+        <bindingRedirect oldVersion="0.0.0.0-99.0.0.0" newVersion="7.0.0.0" />
+        <codeBase version="7.0.0.0" href="file:///C:/Program Files/Microsoft Visual Studio/2022/Professional/Common7/IDE/Extensions/avm13osb.viu/Microsoft.Dynamics.AX.Framework.Xlnt.XReference.XReferenceProviders.dll" />
+      </dependentAssembly>
+
+      <dependentAssembly>
+        <assemblyIdentity name="Microsoft.Dynamics.Framework.Tools.Configuration.17.0" publicKeyToken="31bf3856ad364e35" />
+        <bindingRedirect oldVersion="0.0.0.0-99.0.0.0" newVersion="7.0.0.0" />
+        <codeBase version="7.0.0.0" href="file:///C:/Program Files/Microsoft Visual Studio/2022/Professional/Common7/IDE/Extensions/avm13osb.viu/Microsoft.Dynamics.Framework.Tools.Configuration.17.0.dll" />
+      </dependentAssembly>
         </assemblyBinding>
   </runtime>
 </configuration>

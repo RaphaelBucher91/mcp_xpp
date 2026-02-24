@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
@@ -17,6 +18,7 @@ namespace D365MetadataService
     {
         private static ILogger _logger;
         private static NamedPipeServer _namedPipeServer;
+        private static string _vsExtensionPath;
 
         static async Task Main(string[] args)
         {
@@ -24,6 +26,9 @@ namespace D365MetadataService
             {
                 // Initialize logging first
                 InitializeLogging();
+
+                // Register assembly resolver for D365 extension DLLs (transitive dependencies)
+                RegisterAssemblyResolver();
 
                 _logger.Information("[Program] === D365 Metadata Service Starting ===");
                 _logger.Information("[Program] Process ID: {ProcessId}", System.Diagnostics.Process.GetCurrentProcess().Id);
@@ -42,10 +47,9 @@ namespace D365MetadataService
                 _namedPipeServer = serviceProvider.GetRequiredService<NamedPipeServer>();
                 _logger.Information("[Program] Using Named Pipes transport with Handler pattern");
 
-                // Eagerly initialize cross-reference database and log what was found
-                var handlers = serviceProvider.GetServices<IRequestHandler>();
-                var crossRefHandler = handlers.OfType<CrossReferenceHandler>().FirstOrDefault();
-                crossRefHandler?.TryInitialize();
+                // Eagerly initialize cross-reference database via the provider API
+                var crossRefService = serviceProvider.GetRequiredService<CrossReferenceService>();
+                crossRefService.TryInitialize();
 
                 // Handle graceful shutdown
                 Console.CancelKeyPress += OnCancelKeyPress;
@@ -153,7 +157,10 @@ namespace D365MetadataService
             services.AddSingleton<IRequestHandler, ObjectCollectionHandler>();
             services.AddSingleton<IRequestHandler, ObjectCodeHandler>();
 
-            // Register cross-reference handler
+            // Register cross-reference service and handler
+            services.AddSingleton<CrossReferenceService>(sp =>
+                new CrossReferenceService(
+                    sp.GetRequiredService<ILogger>()));
             services.AddSingleton<IRequestHandler, CrossReferenceHandler>();
 
             // Register label handler
@@ -184,6 +191,39 @@ namespace D365MetadataService
                 .CreateLogger();
 
             _logger = Log.Logger;
+        }
+
+        /// <summary>
+        /// Registers an AppDomain AssemblyResolve handler that probes the VS D365 extension
+        /// folder for transitive dependencies (e.g. XppCore.dll required by XReferenceProviders.dll).
+        /// This avoids having to add every transitive DLL as an explicit project reference.
+        /// </summary>
+        private static void RegisterAssemblyResolver()
+        {
+            // Discover the VS extension path once
+            _vsExtensionPath = FileSystemManager.Instance.GetVSExtensionPath();
+
+            if (string.IsNullOrEmpty(_vsExtensionPath))
+            {
+                _logger.Warning("[Program] VS extension path not found - assembly resolver will not probe extension folder");
+                return;
+            }
+
+            _logger.Information("[Program] Registering assembly resolver for VS extension path: {Path}", _vsExtensionPath);
+
+            AppDomain.CurrentDomain.AssemblyResolve += (sender, resolveArgs) =>
+            {
+                var assemblyName = new AssemblyName(resolveArgs.Name);
+                var dllPath = Path.Combine(_vsExtensionPath, assemblyName.Name + ".dll");
+
+                if (File.Exists(dllPath))
+                {
+                    _logger.Information("[Program] Resolved assembly from VS extension: {Assembly}", assemblyName.Name);
+                    return Assembly.LoadFrom(dllPath);
+                }
+
+                return null;
+            };
         }
 
         private static ServiceConfiguration LoadConfiguration()

@@ -144,6 +144,51 @@ namespace D365MetadataService.Models
         public int TotalAvailable { get; set; }
         public Dictionary<string, int> SummaryByKind { get; set; } = new Dictionary<string, int>();
         public List<CrossReferenceEntry> References { get; set; } = new List<CrossReferenceEntry>();
+
+        /// <summary>
+        /// When includeMembers=true, contains cross-reference results for each discovered member
+        /// </summary>
+        public List<MemberCrossReferenceResult> MemberResults { get; set; }
+
+        /// <summary>
+        /// When objectType is auto-detected, lists which types the object was found as
+        /// (e.g. ["Tables", "Forms"]). Null when type was explicitly specified.
+        /// </summary>
+        public string[] DetectedTypes { get; set; }
+
+        /// <summary>
+        /// When objectType is auto-detected, contains per-type cross-reference results.
+        /// Each entry represents one detected type (Table, Form, Class, etc.) with its own
+        /// references and optional member results.
+        /// </summary>
+        public List<TypeCrossReferenceResult> TypeResults { get; set; }
+    }
+
+    /// <summary>
+    /// Cross-reference results for one detected type when auto-detecting object type
+    /// </summary>
+    public class TypeCrossReferenceResult
+    {
+        public string TypePath { get; set; }
+        public string DetectedType { get; set; }
+        public int TotalFound { get; set; }
+        public int TotalAvailable { get; set; }
+        public Dictionary<string, int> SummaryByKind { get; set; } = new Dictionary<string, int>();
+        public List<CrossReferenceEntry> References { get; set; } = new List<CrossReferenceEntry>();
+        public List<MemberCrossReferenceResult> MemberResults { get; set; }
+    }
+
+    /// <summary>
+    /// Cross-reference results for a specific member (method/field) of an object
+    /// </summary>
+    public class MemberCrossReferenceResult
+    {
+        public string MemberPath { get; set; }
+        public string MemberName { get; set; }
+        public int TotalFound { get; set; }
+        public int TotalAvailable { get; set; }
+        public Dictionary<string, int> SummaryByKind { get; set; } = new Dictionary<string, int>();
+        public List<CrossReferenceEntry> References { get; set; } = new List<CrossReferenceEntry>();
     }
 
     /// <summary>
